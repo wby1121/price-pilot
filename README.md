@@ -179,10 +179,29 @@ Price Pilot 当前不是自己维护一套爬虫平台，而是刻意采用更�
 | 排序逻辑 | `price_pilot/ranking.py` | 用统一评分把多平台结果拉到同一坐标系 |
 | Agent 能力注入 | `price_pilot/skill/` | 让模型知道怎么搜、怎么比、怎么排 |
 | 安装方式 | `price-pilot install` | 直接把 skill 安装到用户自己的 skills 目录 |
+| 访问接入层 | `config.yaml` + `mcporter.json` | 用 cookie 与 MCP 别名承接真实访问能力 |
 
 ### 为什么不直接做成网页比价站
 
 因为这个项目的核心不是“给人浏览”，而是“给 Agent 一套可靠的购物决策工作流”。Agent 读懂 skill 后，可以按用户偏好动态调整预算、风险偏好、平台范围和排序标准，这比固定页面更适合你这个项目的目标。
+
+### Cookie / MCP 接入层
+
+Price Pilot 现在开始提供一层和 Agent Reach 类似的接入骨架：
+
+- 本地配置文件：`~/.price-pilot/config.yaml`
+- cookie 工作流：
+  `price-pilot config cookie import <platform> --file /path/to/cookies.json`
+  `price-pilot config cookie validate <platform> --file /path/to/cookies.json`
+  `price-pilot config cookie probe <platform>`
+  `price-pilot config cookie status`
+- `mcporter` 自动探测：优先读取 `~/.openclaw/workspace/config/mcporter.json`
+- doctor 会检查每个平台是否有 cookie 或 MCP server
+
+推荐阅读：
+
+- [setup-cookies.md](price_pilot/guides/setup-cookies.md)
+- [setup-mcporter.md](price_pilot/guides/setup-mcporter.md)
 
 ---
 

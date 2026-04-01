@@ -7,6 +7,11 @@ def test_doctor_reports_skill_and_channels():
     report = run_doctor()
     names = [name for _, name, _ in report]
     assert "skill" in names
+    assert "mcporter" in names
     assert "jd" in names
     assert "zhuanzhuan" in names
 
+
+def test_doctor_accepts_probe_flag():
+    report = run_doctor(probe=False, timeout=1)
+    assert isinstance(report, list)
