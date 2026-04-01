@@ -1,0 +1,30 @@
+name: Request Owner Review
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+
+jobs:
+  request-review:
+    if: ${{ vars.REVIEW_OWNER != '' && github.event.pull_request.user.login != vars.REVIEW_OWNER }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request owner review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = process.env.REVIEW_OWNER;
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              reviewers: [owner],
+            });
+        env:
+          REVIEW_OWNER: ${{ vars.REVIEW_OWNER }}
+

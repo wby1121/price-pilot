@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a problem with the skill, ranking logic, or documentation.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the bug and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we reproduce it?
+      description: Include sample prompts, product names, or candidate JSON if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Extra context
+      description: Add screenshots, links, or reasoning notes.
+

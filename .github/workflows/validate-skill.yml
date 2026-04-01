@@ -1,0 +1,60 @@
+name: Validate Skill
+
+on:
+  push:
+    branches:
+      - main
+      - "codex/**"
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate skill structure
+        run: python3 tools/validate_skill.py skills/cn-shopping-compare
+
+      - name: Smoke test ranking script
+        run: |
+          cat <<'JSON' >/tmp/sample.json
+          [
+            {
+              "platform": "jd",
+              "title": "Sample A",
+              "price": 4999,
+              "landed_price": 4899,
+              "condition": "new",
+              "seller_type": "official flagship",
+              "rating": 4.8,
+              "review_count": 1200,
+              "warranty": "1 year",
+              "return_policy": "7 days",
+              "advantages": ["official store"],
+              "red_flags": [],
+              "url": "https://example.com/a"
+            },
+            {
+              "platform": "xianyu",
+              "title": "Sample B",
+              "price": 4300,
+              "landed_price": 4300,
+              "condition": "used",
+              "seller_type": "personal seller",
+              "rating": 4.3,
+              "review_count": 8,
+              "advantages": ["cheap"],
+              "red_flags": ["unknown_condition"],
+              "risk_flags": ["unknown_condition"],
+              "url": "https://example.com/b"
+            }
+          ]
+          JSON
+          python3 skills/cn-shopping-compare/scripts/score_products.py --input /tmp/sample.json >/tmp/ranked.json
+          test -s /tmp/ranked.json
+
