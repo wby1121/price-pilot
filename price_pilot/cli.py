@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
-from .core import skill_root
+from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
 from .doctor import format_doctor_report
 from .ranking import rank_items
 
@@ -28,6 +28,16 @@ def main() -> None:
     subparsers.add_parser("doctor", help="Show package and platform readiness.")
     subparsers.add_parser("skill-path", help="Print bundled skill path.")
 
+    install_parser = subparsers.add_parser("install", help="Install bundled skill into a skills directory.")
+    install_parser.add_argument("--dir", help="Target skills directory. Defaults to $CODEX_HOME/skills or ~/.codex/skills.")
+    install_parser.add_argument("--force", action="store_true", help="Replace an existing installation.")
+
+    update_parser = subparsers.add_parser("update", help="Update bundled skill in a skills directory.")
+    update_parser.add_argument("--dir", help="Target skills directory. Defaults to $CODEX_HOME/skills or ~/.codex/skills.")
+
+    uninstall_parser = subparsers.add_parser("uninstall", help="Remove installed bundled skill.")
+    uninstall_parser.add_argument("--dir", help="Target skills directory. Defaults to $CODEX_HOME/skills or ~/.codex/skills.")
+
     score_parser = subparsers.add_parser("score", help="Rank normalized candidate items.")
     score_parser.add_argument("--input", required=True, help="JSON array or object with items.")
 
@@ -41,6 +51,24 @@ def main() -> None:
         print(skill_root())
         return
 
+    if args.command == "install":
+        skills_dir = Path(args.dir).expanduser() if args.dir else default_skills_dir()
+        destination = install_skill(skills_dir, force=args.force)
+        print(f"Installed skill to {destination}")
+        return
+
+    if args.command == "update":
+        skills_dir = Path(args.dir).expanduser() if args.dir else default_skills_dir()
+        destination = install_skill(skills_dir, force=True)
+        print(f"Updated skill at {destination}")
+        return
+
+    if args.command == "uninstall":
+        skills_dir = Path(args.dir).expanduser() if args.dir else default_skills_dir()
+        destination = uninstall_skill(skills_dir)
+        print(f"Removed skill from {destination}")
+        return
+
     if args.command == "score":
         items = _load_items(Path(args.input))
         print(json.dumps({"ranked_items": rank_items(items)}, ensure_ascii=False, indent=2))
@@ -51,4 +79,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

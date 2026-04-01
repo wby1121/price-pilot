@@ -1,18 +1,45 @@
-<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1200" height="720" rx="36" fill="#0B1220"/>
-  <rect x="44" y="44" width="1112" height="632" rx="28" fill="#111A2B" stroke="#23314A"/>
-  <rect x="88" y="112" width="372" height="76" rx="18" fill="#1C2940"/>
-  <rect x="88" y="220" width="488" height="22" rx="11" fill="#40506E"/>
-  <rect x="88" y="258" width="420" height="22" rx="11" fill="#40506E"/>
-  <rect x="88" y="340" width="234" height="222" rx="20" fill="#1A263A"/>
-  <rect x="348" y="340" width="234" height="222" rx="20" fill="#1A263A"/>
-  <rect x="608" y="112" width="500" height="450" rx="28" fill="#0F1726" stroke="#2D4367"/>
-  <rect x="646" y="164" width="420" height="54" rx="12" fill="#18355A"/>
-  <rect x="646" y="252" width="420" height="20" rx="10" fill="#51627F"/>
-  <rect x="646" y="292" width="350" height="20" rx="10" fill="#51627F"/>
-  <rect x="646" y="360" width="420" height="88" rx="16" fill="#122640"/>
-  <rect x="646" y="470" width="420" height="52" rx="16" fill="#164E63"/>
-  <text x="88" y="95" fill="#DCE8FF" font-family="Arial, sans-serif" font-size="42" font-weight="700">Price Pilot</text>
-  <text x="88" y="615" fill="#95A7C4" font-family="Arial, sans-serif" font-size="28">Preview placeholder: cross-platform comparison card</text>
+<svg width="1440" height="900" viewBox="0 0 1440 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="100" y1="60" x2="1320" y2="840" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="210" y1="160" x2="1210" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="0.55" stop-color="#06B6D4"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="900" rx="40" fill="url(#bg)"/>
+  <circle cx="1180" cy="170" r="220" fill="#1D4ED8" fill-opacity="0.12"/>
+  <circle cx="240" cy="770" r="240" fill="#22C55E" fill-opacity="0.08"/>
+  <rect x="70" y="60" width="1300" height="780" rx="36" fill="#0B1220" stroke="#23314A"/>
+  <text x="120" y="150" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="54" font-weight="700">Price Pilot</text>
+  <text x="120" y="200" fill="#94A3B8" font-family="Arial, sans-serif" font-size="28">China marketplace comparison workflow for AI agents</text>
+  <rect x="120" y="248" width="460" height="94" rx="24" fill="#111827" stroke="#263244"/>
+  <text x="154" y="305" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="28">iPhone 15 Pro 256G</text>
+  <text x="154" y="332" fill="#64748B" font-family="Arial, sans-serif" font-size="20">JD + Taobao + Pinduoduo + Xianyu + Zhuanzhuan</text>
+  <rect x="120" y="390" width="290" height="310" rx="28" fill="#0F172A" stroke="#2B3B52"/>
+  <rect x="442" y="390" width="290" height="310" rx="28" fill="#0F172A" stroke="#2B3B52"/>
+  <rect x="764" y="390" width="556" height="310" rx="28" fill="#0F172A" stroke="#2B3B52"/>
+  <text x="152" y="442" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="26" font-weight="700">Top Pick</text>
+  <text x="152" y="476" fill="#94A3B8" font-family="Arial, sans-serif" font-size="18">Best overall balance</text>
+  <rect x="152" y="510" width="220" height="52" rx="18" fill="#1D4ED8"/>
+  <text x="176" y="544" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="24">JD Official</text>
+  <text x="152" y="606" fill="#22C55E" font-family="Arial, sans-serif" font-size="44" font-weight="700">8.9 / 10</text>
+  <text x="152" y="646" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="20">Warranty, invoice, low risk</text>
+  <text x="474" y="442" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="26" font-weight="700">Budget Pick</text>
+  <text x="474" y="476" fill="#94A3B8" font-family="Arial, sans-serif" font-size="18">Lowest landed price</text>
+  <rect x="474" y="510" width="220" height="52" rx="18" fill="#16A34A"/>
+  <text x="496" y="544" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="24">PDD Subsidy</text>
+  <text x="474" y="606" fill="#22C55E" font-family="Arial, sans-serif" font-size="44" font-weight="700">8.4 / 10</text>
+  <text x="474" y="646" fill="#CBD5E1" font-family="Arial, sans-serif" font-size="20">Cheaper, but weaker after-sales</text>
+  <text x="796" y="442" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="26" font-weight="700">Comparison Snapshot</text>
+  <rect x="796" y="488" width="492" height="58" rx="18" fill="#111827"/>
+  <rect x="796" y="566" width="492" height="58" rx="18" fill="#111827"/>
+  <text x="824" y="525" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="22">Price competitiveness</text>
+  <text x="1118" y="525" fill="#38BDF8" font-family="Arial, sans-serif" font-size="22">0.35 weight</text>
+  <text x="824" y="603" fill="#E2E8F0" font-family="Arial, sans-serif" font-size="22">Reviews, trust, risk, completeness</text>
+  <text x="1126" y="603" fill="#38BDF8" font-family="Arial, sans-serif" font-size="22">scored</text>
+  <path d="M824 692H1288" stroke="url(#glow)" stroke-width="8" stroke-linecap="round"/>
 </svg>
-
