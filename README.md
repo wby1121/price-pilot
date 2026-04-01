@@ -1,6 +1,10 @@
 <h1 align="center">Price Pilot</h1>
 
 <p align="center">
+  <img src="docs/assets/logo.svg" alt="Price Pilot Logo" width="128">
+</p>
+
+<p align="center">
   <strong>给你的 AI Agent 一键装上国内电商比价能力</strong>
 </p>
 
@@ -11,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="#快速上手">快速开始</a> · <a href="#支持的平台">支持平台</a> · <a href="#装好就能用">装好就能用</a> · <a href="#设计理念">设计理念</a>
+  <a href="#快速上手">快速开始</a> · <a href="docs/README_en.md">English</a> · <a href="#支持的平台">支持平台</a> · <a href="#选型介绍">选型介绍</a> · <a href="#安全性">安全性</a>
 </p>
 
 <p align="center">
@@ -83,11 +87,23 @@ AI Agent 已经能帮你写代码、查文档、管项目，但一旦你让它�
 帮我安装 Price Pilot：https://raw.githubusercontent.com/wby1121/price-pilot/main/docs/install.md
 ```
 
-就这一步。Agent 会把仓库里的 `price_pilot/skill` 安装到它自己的 skills 目录里。
+如果你想自己手动装，也可以直接执行：
+
+```bash
+python3 -m pip install "git+https://github.com/wby1121/price-pilot.git"
+price-pilot install
+```
+
+就这一步。Agent 会把仓库里的 bundled skill 安装到它自己的 skills 目录里。
 
 > 已安装过？更新也是一句话：
 > ```text
 > 帮我更新 Price Pilot：https://raw.githubusercontent.com/wby1121/price-pilot/main/docs/update.md
+> ```
+
+> 不想用了？卸载也是一句话：
+> ```text
+> 帮我卸载 Price Pilot：https://raw.githubusercontent.com/wby1121/price-pilot/main/docs/uninstall.md
 > ```
 
 ---
@@ -108,6 +124,109 @@ Price Pilot 返回的不是单纯链接堆砌，而是：
 - 排名理由
 - 风险提示
 - 最终购买建议
+
+---
+
+## 案例介绍
+
+### 案例 1：买新机，不只是看最低价
+
+用户问：
+
+> “帮我找 iPhone 15 Pro 256G 国行，预算 7500，按性价比排一下。”
+
+Price Pilot 应该输出：
+
+- 京东官方店作为最稳妥选项
+- 拼多多补贴价作为预算优先选项
+- 淘宝替代店作为价格和售后的中间选项
+- 每个平台为什么赢、为什么输
+
+### 案例 2：买二手，风险比价格更重要
+
+用户问：
+
+> “我想买二手 Switch OLED，优先闲鱼和转转，避开高风险卖家。”
+
+Price Pilot 应该重点检查：
+
+- 卖家历史
+- 实拍与成色描述
+- 是否支持验机
+- 是否有明显压价陷阱或引导脱离平台
+
+### 案例 3：评论比参数更能决定是否值得买
+
+用户问：
+
+> “帮我比较 RTX 5070 显卡，重点看评论里的翻车点和售后。”
+
+Price Pilot 应该把“散热差评、啸叫、返修、售后响应慢”等评论信号提升到排序依据里，而不是只比较参数表。
+
+---
+
+## 选型介绍
+
+Price Pilot 当前不是自己维护一套爬虫平台，而是刻意采用更轻的 Agent 工作流方案：
+
+| 场景 | 当前选型 | 为什么这样做 |
+|------|----------|-------------|
+| 实时搜索 | Agent + live web browsing | 商品价格、活动、评论会变，必须用实时数据 |
+| 平台适配 | `price_pilot/channels/*.py` | 每个平台保持独立，方便以后换实现 |
+| 排序逻辑 | `price_pilot/ranking.py` | 用统一评分把多平台结果拉到同一坐标系 |
+| Agent 能力注入 | `price_pilot/skill/` | 让模型知道怎么搜、怎么比、怎么排 |
+| 安装方式 | `price-pilot install` | 直接把 skill 安装到用户自己的 skills 目录 |
+
+### 为什么不直接做成网页比价站
+
+因为这个项目的核心不是“给人浏览”，而是“给 Agent 一套可靠的购物决策工作流”。Agent 读懂 skill 后，可以按用户偏好动态调整预算、风险偏好、平台范围和排序标准，这比固定页面更适合你这个项目的目标。
+
+---
+
+## 安全性
+
+Price Pilot 尽量保持最小侵入：
+
+| 措施 | 说明 |
+|------|------|
+| 本地安装 | 默认只把 skill 复制到本地 skills 目录 |
+| 无账号托管 | 不会要求你把平台 Cookie 存到这个仓库里 |
+| 开源可审查 | 评分规则、安装逻辑、skill 提示词都在仓库中 |
+| 可完全卸载 | 直接删除 skill，并可卸载 `price-pilot` 命令本身 |
+
+### 需要特别注意的事
+
+- Price Pilot 本身不绕过平台登录限制，也不替你保管平台账号。
+- 如果后续你要接入 Cookie、MCP 或自动化登录能力，建议优先使用小号，不要直接用主账号。
+- 对于闲鱼、转转这类二手平台，低价从来不等于低风险，评分结果应该始终配合人工复核。
+
+---
+
+## 安装方式
+
+| 方式 | 命令 | 适合场景 |
+|------|------|---------|
+| Agent 一句话安装 | `帮我安装 Price Pilot: docs/install.md` | 日常使用 |
+| 直接命令安装 | `python3 -m pip install "git+https://github.com/wby1121/price-pilot.git"` + `price-pilot install` | 自己手动安装 |
+| 指定目录安装 | `price-pilot install --dir /path/to/skills` | 多套 skills 环境 |
+| 更新 | `price-pilot update` | 保持最新版 skill |
+| 卸载 | `price-pilot uninstall` | 删除已安装 skill |
+
+---
+
+## 卸载
+
+删除 skill：
+
+```bash
+price-pilot uninstall
+```
+
+如果还想移除命令行工具本身：
+
+```bash
+python3 -m pip uninstall price-pilot
+```
 
 ---
 
@@ -152,31 +271,6 @@ price_pilot/channels/
 ```
 
 每个平台模块只负责描述平台定位和 doctor 可见的可用性。真正执行搜索与阅读时，Agent 仍然应该使用实时网页数据和 skill 内的工作流。
-
----
-
-## 开发
-
-```bash
-python3 -m pip install .[dev]
-python3 -m pytest
-python3 -m price_pilot.cli doctor
-python3 -m price_pilot.cli skill-path
-python3 -m price_pilot.cli score --input sample.json
-```
-
----
-
-## 开源协作
-
-仓库已经配置：
-
-- PR 模板和 Issue 模板
-- `CODEOWNERS`
-- 自动请求 `@wby1121` 审核的 workflow
-- CI 测试工作流
-
-仓库变量 `REVIEW_OWNER` 已设置为 `wby1121`。外部贡献者打开或转为 Ready for review 的 PR 时，GitHub 会自动向你发起 review request。
 
 ## License
 

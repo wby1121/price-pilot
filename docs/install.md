@@ -6,23 +6,27 @@
 帮我安装 Price Pilot：https://raw.githubusercontent.com/wby1121/price-pilot/main/docs/install.md
 ```
 
-Agent 应该执行以下步骤：
-
-1. 确认 skills 目录。
-   默认使用 `${CODEX_HOME:-$HOME/.codex}/skills`。
-2. 克隆仓库到临时目录。
-3. 把 `price_pilot/skill` 复制到目标目录，目录名保持为 `cn-shopping-compare`。
-4. 确认 `<skills-dir>/cn-shopping-compare/SKILL.md` 存在。
-5. 告诉用户可以这样调用：
-   `Use $cn-shopping-compare to compare products across Chinese marketplaces.`
-
-## Shell example
+优先使用真正的安装命令：
 
 ```bash
-TARGET_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
-mkdir -p "$TARGET_DIR"
-git clone https://github.com/wby1121/price-pilot.git /tmp/price-pilot
-rm -rf "$TARGET_DIR/cn-shopping-compare"
-cp -R /tmp/price-pilot/price_pilot/skill "$TARGET_DIR/cn-shopping-compare"
+python3 -m pip install "git+https://github.com/wby1121/price-pilot.git"
+price-pilot install
 ```
 
+如果用户指定了 skills 目录：
+
+```bash
+price-pilot install --dir /path/to/skills
+```
+
+安装成功后，确认这里存在：
+
+```text
+${CODEX_HOME:-$HOME/.codex}/skills/cn-shopping-compare/SKILL.md
+```
+
+然后告诉用户这样调用：
+
+```text
+Use $cn-shopping-compare to compare products across Chinese marketplaces.
+```
