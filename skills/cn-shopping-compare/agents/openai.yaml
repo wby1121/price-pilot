@@ -1,4 +1,0 @@
-interface:
-  display_name: "China Price Compare"
-  short_description: "Cross-platform China shopping comparison skill"
-  default_prompt: "Use $cn-shopping-compare to compare current listings on JD, Taobao, Pinduoduo, Xianyu, and Zhuanzhuan, then rank the best options by value for money."
