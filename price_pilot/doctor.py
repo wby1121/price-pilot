@@ -9,7 +9,7 @@ from .core import validate_skill
 from .integrations.mcporter import list_mcporter_servers, locate_mcporter_config
 
 
-def run_doctor() -> list[tuple[str, str, str]]:
+def run_doctor(probe: bool = False, timeout: int = 12) -> list[tuple[str, str, str]]:
     status: list[tuple[str, str, str]] = []
     config = Config()
     ok, missing = validate_skill()
@@ -25,14 +25,14 @@ def run_doctor() -> list[tuple[str, str, str]]:
     else:
         status.append(("warn", "mcporter", "mcporter config not found"))
     for channel in get_all_channels():
-        channel_status, message = channel.check(config)
+        channel_status, message = channel.check(config, probe=probe, timeout=timeout)
         status.append((channel_status, channel.name, message))
     return status
 
 
-def format_doctor_report() -> str:
+def format_doctor_report(probe: bool = False, timeout: int = 12) -> str:
     lines = ["Price Pilot doctor", ""]
-    for status, name, message in run_doctor():
+    for status, name, message in run_doctor(probe=probe, timeout=timeout):
         badge = {
             "ok": "[ok]",
             "warn": "[warn]",

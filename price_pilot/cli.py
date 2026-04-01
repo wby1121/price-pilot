@@ -27,7 +27,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="price-pilot")
     subparsers = parser.add_subparsers(dest="command")
 
-    subparsers.add_parser("doctor", help="Show package and platform readiness.")
+    doctor_parser = subparsers.add_parser("doctor", help="Show package and platform readiness.")
+    doctor_parser.add_argument("--probe", action="store_true", help="Run live cookie login-state probes when configured.")
+    doctor_parser.add_argument("--timeout", type=int, default=12, help="Probe timeout in seconds.")
     subparsers.add_parser("skill-path", help="Print bundled skill path.")
 
     install_parser = subparsers.add_parser("install", help="Install bundled skill into a skills directory.")
@@ -74,7 +76,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "doctor":
-        print(format_doctor_report())
+        print(format_doctor_report(probe=args.probe, timeout=args.timeout))
         return
 
     if args.command == "skill-path":

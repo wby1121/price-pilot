@@ -25,7 +25,7 @@ class Channel(ABC):
         """Check if this channel can handle the given text or URL."""
         ...
 
-    def check(self, config=None) -> tuple[str, str]:
+    def check(self, config=None, probe: bool = False, timeout: int = 12) -> tuple[str, str]:
         """Return (status, message) for doctor output."""
         backend_text = "、".join(self.backends) if self.backends else "bundled guidance"
         return "ok", backend_text
