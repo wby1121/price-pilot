@@ -1,31 +1,28 @@
 # Install Price Pilot
 
-Use this guide when another agent needs to install the `cn-shopping-compare` skill from this repository.
+复制这句话给你的 Agent：
 
-## Install workflow
+```text
+帮我安装 Price Pilot：https://raw.githubusercontent.com/wby1121/price-pilot/main/docs/install.md
+```
 
-1. Confirm the user's skill directory.
-   Default to `${CODEX_HOME:-$HOME/.codex}/skills` when the user does not specify one.
-2. Clone or download this repository.
-3. Copy `skills/cn-shopping-compare` into the target skills directory.
-4. Confirm that `SKILL.md` exists at `<skills-dir>/cn-shopping-compare/SKILL.md`.
-5. Tell the user how to invoke the skill: `Use $cn-shopping-compare to ...`
+Agent 应该执行以下步骤：
 
-## Git install example
+1. 确认 skills 目录。
+   默认使用 `${CODEX_HOME:-$HOME/.codex}/skills`。
+2. 克隆仓库到临时目录。
+3. 把 `price_pilot/skill` 复制到目标目录，目录名保持为 `cn-shopping-compare`。
+4. 确认 `<skills-dir>/cn-shopping-compare/SKILL.md` 存在。
+5. 告诉用户可以这样调用：
+   `Use $cn-shopping-compare to compare products across Chinese marketplaces.`
+
+## Shell example
 
 ```bash
 TARGET_DIR="${CODEX_HOME:-$HOME/.codex}/skills"
 mkdir -p "$TARGET_DIR"
-git clone <your-repo-url> /tmp/price-pilot
+git clone https://github.com/wby1121/price-pilot.git /tmp/price-pilot
 rm -rf "$TARGET_DIR/cn-shopping-compare"
-cp -R /tmp/price-pilot/skills/cn-shopping-compare "$TARGET_DIR/cn-shopping-compare"
+cp -R /tmp/price-pilot/price_pilot/skill "$TARGET_DIR/cn-shopping-compare"
 ```
-
-## Validation
-
-Check:
-
-- `SKILL.md` exists
-- `agents/openai.yaml` exists
-- `references/` and `scripts/` are copied
 

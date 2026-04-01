@@ -1,11 +1,8 @@
-#!/usr/bin/env python3
-"""Rank normalized product listings by value for money."""
+# -*- coding: utf-8 -*-
+"""Ranking utilities for normalized shopping candidates."""
 
 from __future__ import annotations
 
-import argparse
-import json
-from pathlib import Path
 from typing import Any
 
 
@@ -42,15 +39,6 @@ def safe_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except (TypeError, ValueError):
         return default
-
-
-def parse_input(path: Path) -> list[dict[str, Any]]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(payload, list):
-        return payload
-    if isinstance(payload, dict) and isinstance(payload.get("items"), list):
-        return payload["items"]
-    raise ValueError("Input must be a JSON array or an object with an 'items' array.")
 
 
 def normalize_platform(name: str) -> str:
@@ -126,34 +114,6 @@ def risk_adjustment(item: dict[str, Any]) -> float:
     return clamp(1 - penalties)
 
 
-def score_item(items: list[dict[str, Any]], item: dict[str, Any]) -> dict[str, Any]:
-    scored = {
-        "platform": item.get("platform"),
-        "title": item.get("title"),
-        "price": item.get("price"),
-        "landed_price": item.get("landed_price"),
-        "url": item.get("url"),
-    }
-    components = {
-        "price": price_score(items, item),
-        "reviews": review_score(item),
-        "completeness": completeness_score(item),
-        "trust": trust_score(item),
-        "risk": risk_adjustment(item),
-    }
-    total = (
-        components["price"] * 0.35
-        + components["reviews"] * 0.25
-        + components["completeness"] * 0.15
-        + components["trust"] * 0.15
-        + components["risk"] * 0.10
-    )
-    scored["score"] = round(total, 4)
-    scored["components"] = {key: round(value, 4) for key, value in components.items()}
-    scored["summary"] = build_summary(item, scored["components"])
-    return scored
-
-
 def build_summary(item: dict[str, Any], components: dict[str, float]) -> str:
     reasons: list[str] = []
     if components["price"] >= 0.8:
@@ -169,17 +129,35 @@ def build_summary(item: dict[str, Any], components: dict[str, float]) -> str:
     return "; ".join(reasons)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Score normalized shopping candidates.")
-    parser.add_argument("--input", required=True, help="Path to a JSON array or object with an items array.")
-    args = parser.parse_args()
+def score_item(items: list[dict[str, Any]], item: dict[str, Any]) -> dict[str, Any]:
+    components = {
+        "price": price_score(items, item),
+        "reviews": review_score(item),
+        "completeness": completeness_score(item),
+        "trust": trust_score(item),
+        "risk": risk_adjustment(item),
+    }
+    total = (
+        components["price"] * 0.35
+        + components["reviews"] * 0.25
+        + components["completeness"] * 0.15
+        + components["trust"] * 0.15
+        + components["risk"] * 0.10
+    )
+    return {
+        "platform": item.get("platform"),
+        "title": item.get("title"),
+        "price": item.get("price"),
+        "landed_price": item.get("landed_price"),
+        "url": item.get("url"),
+        "score": round(total, 4),
+        "components": {key: round(value, 4) for key, value in components.items()},
+        "summary": build_summary(item, components),
+    }
 
-    items = parse_input(Path(args.input))
+
+def rank_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ranked = [score_item(items, item) for item in items]
     ranked.sort(key=lambda entry: entry["score"], reverse=True)
-    print(json.dumps({"ranked_items": ranked}, ensure_ascii=False, indent=2))
-
-
-if __name__ == "__main__":
-    main()
+    return ranked
 

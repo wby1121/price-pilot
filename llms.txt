@@ -1,0 +1,12 @@
+Price Pilot is an open source package and bundled skill for AI agents that need to compare products across major Chinese shopping platforms.
+
+Primary capabilities:
+- Search and compare JD, Taobao, Pinduoduo, Xianyu, and Zhuanzhuan.
+- Normalize listings into comparable fields.
+- Score options by price competitiveness, review quality, completeness, protection, and risk.
+- Return purchase recommendations and ranking explanations.
+
+Primary install docs:
+- docs/install.md
+- docs/update.md
+
