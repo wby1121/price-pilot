@@ -90,11 +90,14 @@ AI Agent 已经能帮你写代码、查文档、管项目，但一旦你让它�
 如果你想自己手动装，也可以直接执行：
 
 ```bash
-python3 -m pip install "git+https://github.com/wby1121/price-pilot.git"
+python3 -m pip install --upgrade "git+https://github.com/wby1121/price-pilot.git"
 price-pilot install
 ```
 
 就这一步。Agent 会把仓库里的 bundled skill 安装到它自己的 skills 目录里。
+
+> OpenClaw 提示：
+> 为了尽量避免 exec approval 弹窗，安装文档已经明确约束为 `pip install` + `price-pilot install`，不走 `git clone`。
 
 > 已安装过？更新也是一句话：
 > ```text
