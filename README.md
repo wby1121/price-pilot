@@ -193,6 +193,7 @@ Price Pilot 现在开始提供一层和 Agent Reach 类似的接入骨架：
 - cookie 工作流：
   `price-pilot config cookie import <platform> --file /path/to/cookies.json`
   `price-pilot config cookie validate <platform> --file /path/to/cookies.json`
+  `price-pilot config cookie probe <platform>`
   `price-pilot config cookie status`
 - `mcporter` 自动探测：优先读取 `~/.openclaw/workspace/config/mcporter.json`
 - doctor 会检查每个平台是否有 cookie 或 MCP server

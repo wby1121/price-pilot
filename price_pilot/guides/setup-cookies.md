@@ -11,6 +11,8 @@ Use this guide when direct marketplace access needs a browser login state.
 
 ```bash
 price-pilot config cookie import <platform> --file /path/to/cookies.json
+price-pilot config cookie validate <platform> --file /path/to/cookies.json
+price-pilot config cookie probe <platform>
 price-pilot config cookie status
 ```
 
@@ -28,3 +30,4 @@ Supported platforms:
 - Refresh the export when the platform invalidates login state.
 - Keep cookie files on the local machine only.
 - Use `price-pilot config cookie validate <platform> --file ...` for a dry run before importing.
+- Use `price-pilot config cookie probe <platform>` after importing to test whether login likely still works.

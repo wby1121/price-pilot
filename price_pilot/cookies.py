@@ -8,28 +8,45 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
 PLATFORM_RULES = {
     "jd": {
         "domains": ["jd.com", "jingdong.com"],
         "required_names": ["pt_key", "pt_pin"],
+        "probe_url": "https://home.jd.com/",
+        "login_markers": ["passport.jd.com", "登录", "验证码", "安全验证"],
+        "success_markers": ["我的京东", "退出登录", "账户设置"],
     },
     "taobao": {
         "domains": ["taobao.com", "tmall.com"],
         "required_names": ["cookie2", "_tb_token_", "unb"],
+        "probe_url": "https://i.taobao.com/my_taobao.htm",
+        "login_markers": ["login.taobao.com", "验证码", "请登录", "login_unusual.htm"],
+        "success_markers": ["我的淘宝", "已买到的宝贝", "收货地址"],
     },
     "pinduoduo": {
         "domains": ["pinduoduo.com", "yangkeduo.com"],
         "required_names": ["api_uid", "_nano_fp"],
+        "probe_url": "https://mobile.yangkeduo.com/personal.html",
+        "login_markers": ["登录", "验证码", "mobile.yangkeduo.com/login"],
+        "success_markers": ["个人中心", "我的订单", "收货地址"],
     },
     "xianyu": {
         "domains": ["2.taobao.com", "taobao.com", "idlefish.com"],
         "required_names": ["cookie2", "_tb_token_", "unb"],
+        "probe_url": "https://www.goofish.com/",
+        "login_markers": ["登录", "验证码", "login.taobao.com", "安全验证"],
+        "success_markers": ["闲鱼", "我发布的", "我买到的"],
     },
     "zhuanzhuan": {
         "domains": ["zhuanzhuan.com"],
         "required_names": ["zzptt", "uid"],
+        "probe_url": "https://www.zhuanzhuan.com/",
+        "login_markers": ["登录", "验证码", "passport", "安全验证"],
+        "success_markers": ["转转", "我的", "个人中心"],
     },
 }
 
@@ -44,6 +61,17 @@ class CookieCheckResult:
     present_names: list[str]
     missing_names: list[str]
     format_name: str
+    message: str
+
+
+@dataclass
+class CookieProbeResult:
+    ok: bool
+    platform: str
+    file: Path
+    status_code: int | None
+    final_url: str | None
+    mode: str
     message: str
 
 
@@ -100,6 +128,10 @@ def load_cookie_file(path: Path) -> tuple[list[dict[str, str]], str]:
     raise ValueError("Unsupported cookie format. Expected a cookie list or object with cookies/data.")
 
 
+def _build_cookie_header(cookies: list[dict[str, str]]) -> str:
+    return "; ".join(f"{entry['name']}={entry['value']}" for entry in cookies)
+
+
 def validate_cookie_file(platform: str, path: Path) -> CookieCheckResult:
     rules = PLATFORM_RULES[platform]
     cookies, format_name = load_cookie_file(path)
@@ -139,7 +171,90 @@ def validate_cookie_file(platform: str, path: Path) -> CookieCheckResult:
     )
 
 
-def cookie_status(platform: str, path: Path | None) -> dict[str, Any]:
+def analyze_probe_response(platform: str, status_code: int | None, final_url: str | None, body: str) -> CookieProbeResult:
+    rules = PLATFORM_RULES[platform]
+    normalized_url = (final_url or "").lower()
+    lowered_body = (body or "").lower()
+    login_markers = [marker.lower() for marker in rules["login_markers"]]
+    success_markers = [marker.lower() for marker in rules["success_markers"]]
+
+    if status_code and status_code >= 400:
+        return CookieProbeResult(
+            ok=False,
+            platform=platform,
+            file=Path("."),
+            status_code=status_code,
+            final_url=final_url,
+            mode="http_error",
+            message=f"Probe returned HTTP {status_code}",
+        )
+
+    if any(marker in normalized_url or marker in lowered_body for marker in login_markers):
+        return CookieProbeResult(
+            ok=False,
+            platform=platform,
+            file=Path("."),
+            status_code=status_code,
+            final_url=final_url,
+            mode="login_required",
+            message="Cookie likely expired or redirected to login/verification",
+        )
+
+    if any(marker in lowered_body for marker in success_markers):
+        return CookieProbeResult(
+            ok=True,
+            platform=platform,
+            file=Path("."),
+            status_code=status_code,
+            final_url=final_url,
+            mode="authenticated",
+            message="Probe suggests the cookie is still usable",
+        )
+
+    return CookieProbeResult(
+        ok=False,
+        platform=platform,
+        file=Path("."),
+        status_code=status_code,
+        final_url=final_url,
+        mode="uncertain",
+        message="Probe completed but could not confirm authenticated state",
+    )
+
+
+def probe_cookie_file(platform: str, path: Path, timeout: int = 12) -> CookieProbeResult:
+    cookies, _ = load_cookie_file(path)
+    probe_url = PLATFORM_RULES[platform]["probe_url"]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "Cookie": _build_cookie_header(cookies),
+    }
+    request = Request(probe_url, headers=headers)
+
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            body = response.read(8192).decode("utf-8", errors="ignore")
+            result = analyze_probe_response(platform, response.getcode(), response.geturl(), body)
+    except HTTPError as exc:
+        body = exc.read(8192).decode("utf-8", errors="ignore")
+        result = analyze_probe_response(platform, exc.code, exc.geturl(), body)
+    except URLError as exc:
+        return CookieProbeResult(
+            ok=False,
+            platform=platform,
+            file=path,
+            status_code=None,
+            final_url=None,
+            mode="network_error",
+            message=f"Probe failed: {exc.reason}",
+        )
+
+    result.file = path
+    return result
+
+
+def cookie_status(platform: str, path: Path | None, probe: bool = False, timeout: int = 12) -> dict[str, Any]:
     if not path:
         return {
             "platform": platform,
@@ -156,7 +271,7 @@ def cookie_status(platform: str, path: Path | None) -> dict[str, Any]:
             "message": f"Configured file does not exist: {file_path}",
         }
     result = validate_cookie_file(platform, file_path)
-    return {
+    payload = {
         "platform": platform,
         "configured": True,
         "ok": result.ok,
@@ -168,3 +283,14 @@ def cookie_status(platform: str, path: Path | None) -> dict[str, Any]:
         "format": result.format_name,
         "message": result.message,
     }
+    if probe and result.ok:
+        probe_result = probe_cookie_file(platform, file_path, timeout=timeout)
+        payload["probe"] = {
+            "ok": probe_result.ok,
+            "mode": probe_result.mode,
+            "status_code": probe_result.status_code,
+            "final_url": probe_result.final_url,
+            "message": probe_result.message,
+        }
+        payload["ok"] = payload["ok"] and probe_result.ok
+    return payload

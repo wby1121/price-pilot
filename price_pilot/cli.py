@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .config import Config
 from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
-from .cookies import cookie_status, import_cookie_file, validate_cookie_file
+from .cookies import cookie_status, import_cookie_file, probe_cookie_file, validate_cookie_file
 from .doctor import format_doctor_report
 from .ranking import rank_items
 
@@ -56,6 +56,13 @@ def main() -> None:
 
     cookie_status_parser = cookie_subparsers.add_parser("status", help="Show cookie status for one or all platforms.")
     cookie_status_parser.add_argument("platform", nargs="?", choices=["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"])
+    cookie_status_parser.add_argument("--probe", action="store_true", help="Run a live login-state probe when possible.")
+    cookie_status_parser.add_argument("--timeout", type=int, default=12, help="Probe timeout in seconds.")
+
+    cookie_probe_parser = cookie_subparsers.add_parser("probe", help="Run a live probe against a configured cookie file.")
+    cookie_probe_parser.add_argument("platform", choices=["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"])
+    cookie_probe_parser.add_argument("--file", help="Path to exported cookie JSON file. Defaults to configured file.")
+    cookie_probe_parser.add_argument("--timeout", type=int, default=12, help="Probe timeout in seconds.")
 
     cookie_set_parser = cookie_subparsers.add_parser("set", help="Register an existing cookie file path without copying.")
     cookie_set_parser.add_argument("platform", choices=["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"])
@@ -130,13 +137,29 @@ def main() -> None:
                 return
             if args.cookie_command == "status":
                 if args.platform:
-                    print(json.dumps(cookie_status(args.platform, config.get_cookie_file(args.platform)), ensure_ascii=False, indent=2))
+                    print(json.dumps(cookie_status(args.platform, config.get_cookie_file(args.platform), probe=args.probe, timeout=args.timeout), ensure_ascii=False, indent=2))
                     return
                 payload = {
-                    platform: cookie_status(platform, config.get_cookie_file(platform))
+                    platform: cookie_status(platform, config.get_cookie_file(platform), probe=args.probe, timeout=args.timeout)
                     for platform in ["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"]
                 }
                 print(json.dumps(payload, ensure_ascii=False, indent=2))
+                return
+            if args.cookie_command == "probe":
+                configured = config.get_cookie_file(args.platform)
+                file_path = Path(args.file).expanduser() if args.file else (Path(configured).expanduser() if configured else None)
+                if not file_path:
+                    raise ValueError(f"No cookie file configured for {args.platform}")
+                result = probe_cookie_file(args.platform, file_path, timeout=args.timeout)
+                print(json.dumps({
+                    "platform": args.platform,
+                    "file": str(result.file),
+                    "ok": result.ok,
+                    "mode": result.mode,
+                    "status_code": result.status_code,
+                    "final_url": result.final_url,
+                    "message": result.message,
+                }, ensure_ascii=False, indent=2))
                 return
             if args.cookie_command == "set":
                 config.set_cookie_file(args.platform, args.file)

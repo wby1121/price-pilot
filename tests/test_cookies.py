@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from price_pilot.cookies import import_cookie_file, validate_cookie_file
+from price_pilot.cookies import analyze_probe_response, import_cookie_file, validate_cookie_file
 
 
 def test_validate_cookie_file_with_list_format(tmp_path: Path):
@@ -29,3 +29,25 @@ def test_import_cookie_file_copies_into_target_dir(tmp_path: Path):
     destination = import_cookie_file("jd", source, tmp_path / "config")
     assert destination.exists()
     assert destination.name == "jd.json"
+
+
+def test_analyze_probe_response_detects_login_redirect():
+    result = analyze_probe_response(
+        "taobao",
+        200,
+        "https://login.taobao.com/member/login.jhtml",
+        "请登录",
+    )
+    assert result.ok is False
+    assert result.mode == "login_required"
+
+
+def test_analyze_probe_response_detects_authenticated_state():
+    result = analyze_probe_response(
+        "taobao",
+        200,
+        "https://i.taobao.com/my_taobao.htm",
+        "我的淘宝 已买到的宝贝 收货地址",
+    )
+    assert result.ok is True
+    assert result.mode == "authenticated"

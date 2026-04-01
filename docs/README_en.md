@@ -54,6 +54,7 @@ Price Pilot now includes a lightweight access layer:
 ```bash
 price-pilot config cookie import taobao --file ~/Downloads/taobao-cookies.json
 price-pilot config cookie validate taobao --file ~/Downloads/taobao-cookies.json
+price-pilot config cookie probe taobao
 price-pilot config cookie status
 price-pilot config show
 price-pilot doctor
