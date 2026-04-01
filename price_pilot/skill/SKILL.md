@@ -29,6 +29,12 @@ Ask a follow-up only when the missing detail would materially change the recomme
 
 Use current web data for all time-sensitive facts. Do not rely on stale memory for prices, ratings, or availability.
 
+If direct browsing is blocked, prefer these escalation paths in order:
+
+1. Use a configured marketplace MCP server when available.
+2. Use a configured local cookie export for the platform.
+3. Ask the user for direct listing links or screenshots instead of stopping at "access denied".
+
 Search these platforms unless the user narrows the scope:
 
 - JD
@@ -92,4 +98,5 @@ Always answer in a way that helps the user buy or reject:
 
 - Use [platform-playbook.md](./references/platform-playbook.md) for platform-specific heuristics.
 - Use [ranking-rubric.md](./references/ranking-rubric.md) for default scoring and tie-break rules.
-
+- Use [../../guides/setup-cookies.md](../../guides/setup-cookies.md) for cookie registration.
+- Use [../../guides/setup-mcporter.md](../../guides/setup-mcporter.md) for MCP setup.

@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .config import Config
 from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
 from .doctor import format_doctor_report
 from .ranking import rank_items
@@ -38,6 +39,13 @@ def main() -> None:
     uninstall_parser = subparsers.add_parser("uninstall", help="Remove installed bundled skill.")
     uninstall_parser.add_argument("--dir", help="Target skills directory. Defaults to $CODEX_HOME/skills or ~/.codex/skills.")
 
+    config_parser = subparsers.add_parser("config", help="Manage local Price Pilot configuration.")
+    config_subparsers = config_parser.add_subparsers(dest="config_command")
+    config_subparsers.add_parser("show", help="Show current configuration.")
+    cookie_parser = config_subparsers.add_parser("cookie", help="Register cookie export file for a platform.")
+    cookie_parser.add_argument("platform", choices=["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"])
+    cookie_parser.add_argument("--file", required=True, help="Path to exported cookie JSON file.")
+
     score_parser = subparsers.add_parser("score", help="Rank normalized candidate items.")
     score_parser.add_argument("--input", required=True, help="JSON array or object with items.")
 
@@ -67,6 +75,18 @@ def main() -> None:
         skills_dir = Path(args.dir).expanduser() if args.dir else default_skills_dir()
         destination = uninstall_skill(skills_dir)
         print(f"Removed skill from {destination}")
+        return
+
+    if args.command == "config":
+        config = Config()
+        if args.config_command == "show":
+            print(json.dumps(config.to_dict(), ensure_ascii=False, indent=2))
+            return
+        if args.config_command == "cookie":
+            config.set_cookie_file(args.platform, args.file)
+            print(f"Registered cookie file for {args.platform}: {Path(args.file).expanduser()}")
+            return
+        config_parser.print_help()
         return
 
     if args.command == "score":

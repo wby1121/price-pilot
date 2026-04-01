@@ -2,6 +2,7 @@
 """Pinduoduo — subsidy pricing and low-price benchmarking."""
 
 from .base import Channel
+from ..integrations.mcporter import has_platform_server
 
 
 class PinduoduoChannel(Channel):
@@ -14,6 +15,10 @@ class PinduoduoChannel(Channel):
         text = text.lower()
         return "pinduoduo" in text or "pdd" in text or "拼多多" in text
 
-    def check(self) -> tuple[str, str]:
-        return "ok", "Use live browsing for subsidy pricing, coupon visibility, and complaint patterns"
-
+    def check(self, config=None) -> tuple[str, str]:
+        if has_platform_server("pinduoduo"):
+            return "ok", "mcporter Pinduoduo server is configured"
+        cookie_file = config.get_cookie_file("pinduoduo") if config else None
+        if cookie_file:
+            return "warn", f"Cookie configured at {cookie_file}; MCP server not configured yet"
+        return "off", "Need Pinduoduo cookie export or mcporter server before stable live access"

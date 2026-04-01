@@ -3,19 +3,29 @@
 
 from __future__ import annotations
 
+from .config import Config
 from .channels import get_all_channels
 from .core import validate_skill
+from .integrations.mcporter import list_mcporter_servers, locate_mcporter_config
 
 
 def run_doctor() -> list[tuple[str, str, str]]:
     status: list[tuple[str, str, str]] = []
+    config = Config()
     ok, missing = validate_skill()
     if ok:
         status.append(("ok", "skill", "Bundled skill files are present"))
     else:
         status.append(("error", "skill", f"Missing skill files: {', '.join(missing)}"))
+    mcporter_path = locate_mcporter_config()
+    if mcporter_path:
+        servers = list_mcporter_servers(mcporter_path)
+        summary = ", ".join(servers) if servers else "no servers configured"
+        status.append(("ok", "mcporter", f"{mcporter_path} ({summary})"))
+    else:
+        status.append(("warn", "mcporter", "mcporter config not found"))
     for channel in get_all_channels():
-        channel_status, message = channel.check()
+        channel_status, message = channel.check(config)
         status.append((channel_status, channel.name, message))
     return status
 
@@ -31,4 +41,3 @@ def format_doctor_report() -> str:
         }.get(status, "[info]")
         lines.append(f"{badge} {name}: {message}")
     return "\n".join(lines)
-

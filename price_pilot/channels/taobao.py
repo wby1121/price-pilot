@@ -2,6 +2,7 @@
 """Taobao — broad catalog and seller comparison."""
 
 from .base import Channel
+from ..integrations.mcporter import has_platform_server
 
 
 class TaobaoChannel(Channel):
@@ -14,6 +15,10 @@ class TaobaoChannel(Channel):
         text = text.lower()
         return "taobao.com" in text or "淘宝" in text
 
-    def check(self) -> tuple[str, str]:
-        return "ok", "Use live browsing for Taobao listings, store signals, and buyer review photos"
-
+    def check(self, config=None) -> tuple[str, str]:
+        if has_platform_server("taobao"):
+            return "ok", "mcporter Taobao server is configured"
+        cookie_file = config.get_cookie_file("taobao") if config else None
+        if cookie_file:
+            return "warn", f"Cookie configured at {cookie_file}; MCP server not configured yet"
+        return "off", "Need Taobao cookie export or mcporter server before stable live access"

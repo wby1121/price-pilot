@@ -14,6 +14,7 @@ It is designed for prompts like:
 - Normalize listing fields into one comparison table
 - Score options by price, reviews, completeness, protection, and risk
 - Return buying advice, not just raw links
+- Discover local cookie exports and mcporter marketplace aliases
 
 ## Install
 
@@ -46,3 +47,14 @@ Prompt example:
 Use $cn-shopping-compare to compare current listings on JD, Taobao, Pinduoduo, Xianyu, and Zhuanzhuan, then rank the best options by value for money.
 ```
 
+## Cookie and MCP layer
+
+Price Pilot now includes a lightweight access layer:
+
+```bash
+price-pilot config cookie taobao --file ~/Downloads/taobao-cookies.json
+price-pilot config show
+price-pilot doctor
+```
+
+It also auto-detects `mcporter.json`, especially in OpenClaw workspaces.
