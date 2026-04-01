@@ -52,7 +52,9 @@ Use $cn-shopping-compare to compare current listings on JD, Taobao, Pinduoduo, X
 Price Pilot now includes a lightweight access layer:
 
 ```bash
-price-pilot config cookie taobao --file ~/Downloads/taobao-cookies.json
+price-pilot config cookie import taobao --file ~/Downloads/taobao-cookies.json
+price-pilot config cookie validate taobao --file ~/Downloads/taobao-cookies.json
+price-pilot config cookie status
 price-pilot config show
 price-pilot doctor
 ```

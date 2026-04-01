@@ -10,7 +10,8 @@ Use this guide when direct marketplace access needs a browser login state.
 4. Register it with Price Pilot:
 
 ```bash
-price-pilot configure cookie <platform> --file /path/to/cookies.json
+price-pilot config cookie import <platform> --file /path/to/cookies.json
+price-pilot config cookie status
 ```
 
 Supported platforms:
@@ -26,4 +27,4 @@ Supported platforms:
 - Prefer a dedicated account over a primary personal account.
 - Refresh the export when the platform invalidates login state.
 - Keep cookie files on the local machine only.
-
+- Use `price-pilot config cookie validate <platform> --file ...` for a dry run before importing.

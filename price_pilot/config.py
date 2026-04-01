@@ -61,12 +61,25 @@ class Config:
         key = self.PLATFORM_KEYS[platform]
         self.set(key, str(Path(path).expanduser()))
 
+    def delete_cookie_file(self, platform: str) -> None:
+        key = self.PLATFORM_KEYS[platform]
+        self.data.pop(key, None)
+        self.save()
+
     def get_cookie_file(self, platform: str) -> str | None:
         key = self.PLATFORM_KEYS.get(platform)
         if not key:
             return None
         value = self.get(key)
         return str(value) if value else None
+
+    def cookie_map(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for platform in self.PLATFORM_KEYS:
+            value = self.get_cookie_file(platform)
+            if value:
+                result[platform] = value
+        return result
 
     def to_dict(self) -> dict[str, Any]:
         masked: dict[str, Any] = {}
@@ -76,4 +89,3 @@ class Config:
             else:
                 masked[key] = value
         return masked
-
