@@ -5,13 +5,19 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from .config import Config
 from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
 from .cookies import cookie_status, import_cookie_file, probe_cookie_file, validate_cookie_file
+from .decision import aggregate_decision
+from .discovery import normalize_candidates
 from .doctor import format_doctor_report
+from .inquiry import build_inquiry_queue, parse_reply
+from .models import CandidateScore, DecisionReport, InquiryMessage, InquiryReply
 from .ranking import rank_items
+from .scoring import score_candidates
 
 
 def _load_items(path: Path) -> list[dict]:
@@ -21,6 +27,61 @@ def _load_items(path: Path) -> list[dict]:
     if isinstance(payload, dict) and isinstance(payload.get("items"), list):
         return payload["items"]
     raise ValueError("Input must be a JSON array or an object with an 'items' array.")
+
+
+def _load_workflow_payload(path: Path) -> dict:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        return {"candidates": payload, "replies": []}
+    if isinstance(payload, dict):
+        candidates = payload.get("candidates")
+        if candidates is None and isinstance(payload.get("items"), list):
+            candidates = payload["items"]
+        if not isinstance(candidates, list):
+            raise ValueError("Input must include a 'candidates' array or an 'items' array.")
+        replies = payload.get("replies", [])
+        if not isinstance(replies, list):
+            raise ValueError("'replies' must be a JSON array when provided.")
+        return {"candidates": candidates, "replies": replies}
+    raise ValueError("Input must be a JSON array or an object with 'candidates'.")
+
+
+def _serialize_inquiry_message(message: InquiryMessage) -> dict:
+    return asdict(message)
+
+
+def _serialize_candidate_score(score: CandidateScore) -> dict:
+    return asdict(score)
+
+
+def _serialize_reply(reply: InquiryReply) -> dict:
+    return asdict(reply)
+
+
+def _serialize_decision(report: DecisionReport) -> dict:
+    return {
+        "best_candidate": _serialize_candidate_score(report.best_candidate) if report.best_candidate else None,
+        "ranked_candidates": [_serialize_candidate_score(item) for item in report.ranked_candidates],
+        "quoted_replies": [_serialize_reply(item) for item in report.quoted_replies],
+        "decision_reason": report.decision_reason,
+    }
+
+
+def _normalize_reply_payloads(reply_payloads: list[dict]) -> list[InquiryReply]:
+    replies: list[InquiryReply] = []
+    for payload in reply_payloads:
+        reply_text = str(payload.get("reply_text") or payload.get("text") or "").strip()
+        if not reply_text:
+            continue
+        replies.append(
+            parse_reply(
+                platform=str(payload.get("platform", "")),
+                candidate_url=payload.get("candidate_url") or payload.get("url"),
+                seller_name=payload.get("seller_name"),
+                reply_text=reply_text,
+            )
+        )
+    return replies
 
 
 def main() -> None:
@@ -72,6 +133,22 @@ def main() -> None:
 
     score_parser = subparsers.add_parser("score", help="Rank normalized candidate items.")
     score_parser.add_argument("--input", required=True, help="JSON array or object with items.")
+
+    workflow_parser = subparsers.add_parser(
+        "workflow",
+        help="Run the full discovery -> scoring -> inquiry -> decision pipeline.",
+    )
+    workflow_parser.add_argument(
+        "--input",
+        required=True,
+        help="JSON array of candidates or object with candidates and optional replies.",
+    )
+    workflow_parser.add_argument(
+        "--inquiry-limit",
+        type=int,
+        default=3,
+        help="Maximum number of inquiry drafts to generate.",
+    )
 
     args = parser.parse_args()
 
@@ -175,6 +252,22 @@ def main() -> None:
     if args.command == "score":
         items = _load_items(Path(args.input))
         print(json.dumps({"ranked_items": rank_items(items)}, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "workflow":
+        payload = _load_workflow_payload(Path(args.input))
+        candidates = normalize_candidates(payload["candidates"])
+        scored = score_candidates(candidates)
+        inquiry_queue = build_inquiry_queue(candidates, limit=args.inquiry_limit)
+        replies = _normalize_reply_payloads(payload["replies"])
+        report = aggregate_decision(scored, replies)
+        print(json.dumps({
+            "discovered_candidates": [candidate.raw for candidate in candidates],
+            "ranked_candidates": [_serialize_candidate_score(item) for item in scored],
+            "inquiry_queue": [_serialize_inquiry_message(item) for item in inquiry_queue],
+            "quoted_replies": [_serialize_reply(item) for item in replies],
+            "decision": _serialize_decision(report),
+        }, ensure_ascii=False, indent=2))
         return
 
     parser.print_help()

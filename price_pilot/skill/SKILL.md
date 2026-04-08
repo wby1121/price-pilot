@@ -9,6 +9,33 @@ description: Comprehensive China e-commerce comparison skill for JD, Taobao, Pin
 
 Use this skill to turn a shopping request into a structured, cross-platform recommendation. Search live listings, normalize the evidence, score the options, and explain why the top choice wins.
 
+## System Modules
+
+Treat the workflow as four independent modules. Do not let an inquiry failure invalidate discovery, scoring, or decision output.
+
+### 1. 商品发现
+
+- Search platform listings or accept direct listing URLs.
+- Extract title, price, condition, region, seller reputation, and publish time.
+- Produce a comparable candidate list even if follow-up inquiry is unavailable.
+
+### 2. 候选评分
+
+- Score value for money.
+- Score risk separately.
+- Generate recommendation reasons from evidence, not only from price.
+
+### 3. 询价助手
+
+- Draft inquiry text first.
+- Require human confirmation before sending.
+- Track seller replies and structure quoted prices.
+
+### 4. 汇总决策
+
+- Merge discovery candidates and inquiry replies.
+- Output ranked products, recommendation reasons, and direct product links.
+
 ## Workflow
 
 ### 1. Clarify the target
@@ -45,7 +72,7 @@ Search these platforms unless the user narrows the scope:
 
 Read [platform-playbook.md](./references/platform-playbook.md) before searching.
 
-### 3. Normalize candidate listings
+### 3. Normalize candidate listings for 商品发现
 
 Prefer 2 to 5 strong candidates per platform instead of dumping raw search noise.
 
@@ -64,7 +91,7 @@ Capture these fields whenever available:
 - red flags
 - listing URL
 
-### 4. Evaluate evidence quality
+### 4. Evaluate evidence quality for 候选评分
 
 Treat evidence quality as part of the recommendation:
 
@@ -84,7 +111,15 @@ python3 scripts/score_products.py --input candidates.json
 
 Use the result as a structured aid, not as a blind final answer.
 
-### 6. Return a decision-oriented answer
+### 6. Use 询价助手 when deeper confirmation is needed
+
+When the user wants true transaction-ready pricing instead of rough market comparison:
+
+- draft an inquiry message
+- ask for manual confirmation before sending
+- track replies as quoted prices rather than replacing the candidate layer
+
+### 7. Return a decision-oriented answer from 汇总决策
 
 Always answer in a way that helps the user buy or reject:
 
@@ -93,6 +128,7 @@ Always answer in a way that helps the user buy or reject:
 - call out the safest option if it differs
 - explain why lower-ranked options lost
 - mention the biggest risk to check before checkout
+- always include direct product links when available
 
 ## References
 
