@@ -128,6 +128,20 @@ Price Pilot 返回的不是单纯链接堆砌，而是：
 - 风险提示
 - 最终购买建议
 
+如果你要在本地直接验证四模块链路，也可以运行：
+
+```bash
+price-pilot workflow --input sample.json --inquiry-limit 3
+```
+
+输入可以是候选商品数组，或带 `candidates` / `replies` 的 JSON 对象。输出会一次性包含：
+
+- 商品发现后的候选列表
+- 候选评分结果
+- 待人工确认的询价草稿
+- 已解析的询价回复
+- 最终推荐结果和原因
+
 ---
 
 ## 案例介绍
