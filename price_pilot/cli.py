@@ -12,9 +12,10 @@ from .config import Config
 from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
 from .cookies import cookie_status, import_cookie_file, probe_cookie_file, validate_cookie_file
 from .decision import aggregate_decision
-from .discovery import normalize_candidates
+from .discovery import build_search_targets, candidate_summary, discover_manual_candidates
 from .doctor import format_doctor_report
-from .inquiry import build_inquiry_queue, parse_reply
+from .inquiry import build_inquiry_queue, parse_reply, send_inquiry_messages
+from .integrations.mcporter import locate_mcporter_config, resolve_platform_server
 from .models import CandidateScore, DecisionReport, InquiryMessage, InquiryReply
 from .ranking import rank_items
 from .scoring import score_candidates
@@ -32,18 +33,27 @@ def _load_items(path: Path) -> list[dict]:
 def _load_workflow_payload(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, list):
-        return {"candidates": payload, "replies": []}
+        return {"candidates": payload, "manual_inputs": [], "replies": []}
     if isinstance(payload, dict):
         candidates = payload.get("candidates")
         if candidates is None and isinstance(payload.get("items"), list):
             candidates = payload["items"]
+        manual_inputs = payload.get("manual_inputs", [])
+        if candidates is None:
+            candidates = []
         if not isinstance(candidates, list):
             raise ValueError("Input must include a 'candidates' array or an 'items' array.")
+        if not isinstance(manual_inputs, list):
+            raise ValueError("'manual_inputs' must be a JSON array when provided.")
         replies = payload.get("replies", [])
         if not isinstance(replies, list):
             raise ValueError("'replies' must be a JSON array when provided.")
-        return {"candidates": candidates, "replies": replies}
+        return {"candidates": candidates, "manual_inputs": manual_inputs, "replies": replies}
     raise ValueError("Input must be a JSON array or an object with 'candidates'.")
+
+
+def _load_json(path: Path) -> object:
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _serialize_inquiry_message(message: InquiryMessage) -> dict:
@@ -82,6 +92,61 @@ def _normalize_reply_payloads(reply_payloads: list[dict]) -> list[InquiryReply]:
             )
         )
     return replies
+
+
+def _normalize_message_payloads(payload: object) -> list[InquiryMessage]:
+    items = payload
+    if isinstance(payload, dict):
+        items = payload.get("inquiry_queue") or payload.get("messages") or payload.get("items") or []
+    if not isinstance(items, list):
+        raise ValueError("Inquiry input must be a list or an object with inquiry_queue/messages/items.")
+    messages: list[InquiryMessage] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        messages.append(InquiryMessage(
+            platform=str(item.get("platform", "")),
+            candidate_url=item.get("candidate_url") or item.get("url"),
+            seller_name=item.get("seller_name"),
+            text=str(item.get("text", "")),
+            confirmed=bool(item.get("confirmed")),
+        ))
+    return messages
+
+
+def _load_discovery_payload(path: Path) -> dict:
+    payload = _load_json(path)
+    if isinstance(payload, list):
+        return {"manual_inputs": payload, "query": None, "platforms": []}
+    if isinstance(payload, dict):
+        manual_inputs = payload.get("manual_inputs")
+        if manual_inputs is None:
+            manual_inputs = payload.get("candidates") or payload.get("items") or []
+        if not isinstance(manual_inputs, list):
+            raise ValueError("Discovery input must include a list under manual_inputs, candidates, or items.")
+        query = payload.get("query")
+        platforms = payload.get("platforms") or []
+        if platforms and not isinstance(platforms, list):
+            raise ValueError("'platforms' must be a JSON array when provided.")
+        return {"manual_inputs": manual_inputs, "query": query, "platforms": platforms}
+    raise ValueError("Discovery input must be a JSON array or object.")
+
+
+def _build_source_status(platforms: list[str], config: Config) -> list[dict]:
+    mcporter_path = locate_mcporter_config()
+    statuses: list[dict] = []
+    for platform in platforms:
+        server = resolve_platform_server(platform, mcporter_path)
+        cookie_file = config.get_cookie_file(platform)
+        statuses.append({
+            "platform": platform,
+            "mcporter_server": server,
+            "mcporter_config": str(mcporter_path) if mcporter_path else None,
+            "has_cookie": bool(cookie_file),
+            "cookie_file": cookie_file,
+            "mode": "mcp" if server else ("cookie" if cookie_file else "manual"),
+        })
+    return statuses
 
 
 def main() -> None:
@@ -134,6 +199,14 @@ def main() -> None:
     score_parser = subparsers.add_parser("score", help="Rank normalized candidate items.")
     score_parser.add_argument("--input", required=True, help="JSON array or object with items.")
 
+    discover_parser = subparsers.add_parser(
+        "discover",
+        help="Normalize manual evidence and prepare cookie/MCP-backed discovery sources.",
+    )
+    discover_parser.add_argument("--input", required=True, help="JSON array or object with manual_inputs/query.")
+    discover_parser.add_argument("--fetch", action="store_true", help="Attempt to fetch direct listing URLs for enrichment.")
+    discover_parser.add_argument("--timeout", type=int, default=12, help="Fetch timeout in seconds.")
+
     workflow_parser = subparsers.add_parser(
         "workflow",
         help="Run the full discovery -> scoring -> inquiry -> decision pipeline.",
@@ -149,6 +222,26 @@ def main() -> None:
         default=3,
         help="Maximum number of inquiry drafts to generate.",
     )
+    workflow_parser.add_argument(
+        "--fetch-discovery",
+        action="store_true",
+        help="Attempt to fetch listing URLs during discovery before scoring.",
+    )
+    workflow_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=12,
+        help="Discovery fetch timeout in seconds.",
+    )
+
+    inquiry_parser = subparsers.add_parser("inquiry", help="Draft or send inquiry messages.")
+    inquiry_subparsers = inquiry_parser.add_subparsers(dest="inquiry_command")
+    inquiry_send_parser = inquiry_subparsers.add_parser("send", help="Send confirmed inquiry messages.")
+    inquiry_send_parser.add_argument("--input", required=True, help="JSON list or workflow output containing inquiry_queue.")
+    inquiry_send_parser.add_argument("--confirm", action="store_true", help="Require explicit confirmation before dispatch.")
+    inquiry_send_parser.add_argument("--transport", choices=["log", "shell"], default="log", help="Dispatch transport.")
+    inquiry_send_parser.add_argument("--shell-command", dest="shell_command", help="Shell command template used when transport=shell.")
+    inquiry_send_parser.add_argument("--log-dir", help="Directory to keep inquiry dispatch traces.")
 
     args = parser.parse_args()
 
@@ -254,20 +347,77 @@ def main() -> None:
         print(json.dumps({"ranked_items": rank_items(items)}, ensure_ascii=False, indent=2))
         return
 
+    if args.command == "discover":
+        config = Config()
+        payload = _load_discovery_payload(Path(args.input))
+        platforms = payload["platforms"] or sorted({
+            item.get("platform") for item in payload["manual_inputs"] if isinstance(item, dict) and item.get("platform")
+        }) or ["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"]
+        candidates, logs = discover_manual_candidates(
+            payload["manual_inputs"],
+            fetch=args.fetch,
+            timeout=args.timeout,
+            cookie_files=config.cookie_map(),
+        )
+        print(json.dumps({
+            "query": payload["query"],
+            "source_status": _build_source_status(platforms, config),
+            "search_targets": build_search_targets(payload["query"], platforms) if payload["query"] else [],
+            "normalized_candidates": [candidate_summary(item) for item in candidates],
+            "discovery_logs": logs,
+        }, ensure_ascii=False, indent=2))
+        return
+
     if args.command == "workflow":
         payload = _load_workflow_payload(Path(args.input))
-        candidates = normalize_candidates(payload["candidates"])
+        config = Config()
+        raw_candidates = payload["candidates"]
+        discovery_logs: list[dict] = []
+        if not raw_candidates and payload.get("manual_inputs"):
+            candidates, discovery_logs = discover_manual_candidates(
+                payload["manual_inputs"],
+                fetch=args.fetch_discovery,
+                timeout=args.timeout,
+                cookie_files=config.cookie_map(),
+            )
+        else:
+            candidates, discovery_logs = discover_manual_candidates(
+                raw_candidates,
+                fetch=args.fetch_discovery,
+                timeout=args.timeout,
+                cookie_files=config.cookie_map(),
+            )
         scored = score_candidates(candidates)
         inquiry_queue = build_inquiry_queue(candidates, limit=args.inquiry_limit)
         replies = _normalize_reply_payloads(payload["replies"])
         report = aggregate_decision(scored, replies)
         print(json.dumps({
             "discovered_candidates": [candidate.raw for candidate in candidates],
+            "discovery_logs": discovery_logs,
             "ranked_candidates": [_serialize_candidate_score(item) for item in scored],
             "inquiry_queue": [_serialize_inquiry_message(item) for item in inquiry_queue],
             "quoted_replies": [_serialize_reply(item) for item in replies],
             "decision": _serialize_decision(report),
         }, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "inquiry":
+        if args.inquiry_command == "send":
+            payload = _load_json(Path(args.input))
+            messages = _normalize_message_payloads(payload)
+            if args.confirm:
+                for message in messages:
+                    message.confirmed = True
+            results = send_inquiry_messages(
+                messages,
+                require_confirmed=True,
+                transport=args.transport,
+                command_template=args.shell_command,
+                log_dir=Path(args.log_dir).expanduser() if args.log_dir else None,
+            )
+            print(json.dumps({"results": results}, ensure_ascii=False, indent=2))
+            return
+        inquiry_parser.print_help()
         return
 
     parser.print_help()

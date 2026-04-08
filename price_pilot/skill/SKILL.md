@@ -1,6 +1,18 @@
 ---
 name: cn-shopping-compare
 description: Comprehensive China e-commerce comparison skill for JD, Taobao, Pinduoduo, Xianyu, and Zhuanzhuan. Use when Codex, OpenClaw, or another agent needs to find products across major Chinese shopping platforms, compare current prices, evaluate reviews and seller quality, identify risk signals, summarize tradeoffs, or rank options by overall value for money for new or used goods.
+triggers:
+  - shopping: 比价/购物/电商/怎么买/最值/性价比/推荐/购买建议/询价
+  - marketplaces:
+    - 京东: 京东/jd/jingdong
+    - 淘宝: 淘宝/taobao/tmall/天猫
+    - 拼多多: 拼多多/pinduoduo/pdd/百亿补贴
+    - 闲鱼: 闲鱼/xianyu/goofish/二手
+    - 转转: 转转/zhuanzhuan
+  - products: 手机/电脑/显卡/耳机/相机/switch/iphone/ipad/macbook
+metadata:
+  openclaw:
+    homepage: https://github.com/wby1121/price-pilot
 ---
 
 # CN Shopping Compare

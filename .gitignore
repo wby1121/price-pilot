@@ -7,4 +7,6 @@ __pycache__/
 .venv/
 dist/
 build/
-
+artifacts/openclaw-tests/*.json
+artifacts/openclaw-tests/*.jsonl
+artifacts/openclaw-tests/*.txt
