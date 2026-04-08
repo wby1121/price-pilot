@@ -22,12 +22,42 @@ PLATFORM_URL_PATTERNS = {
     "zhuanzhuan": ["zhuanzhuan.com"],
 }
 
-PLATFORM_SEARCH_URLS = {
-    "jd": "https://search.jd.com/Search?keyword={query}",
-    "taobao": "https://s.taobao.com/search?q={query}",
-    "pinduoduo": "https://mobile.yangkeduo.com/search_result.html?search_key={query}",
-    "xianyu": "https://www.goofish.com/search?q={query}",
-    "zhuanzhuan": "https://www.zhuanzhuan.com/search/?keyword={query}",
+PLATFORM_DISCOVERY_CAPABILITIES = {
+    "jd": {
+        "search_mode": "public_search",
+        "search_url": "https://search.jd.com/Search?keyword={query}",
+        "supports_direct_listing_fetch": True,
+        "reason": "京东有公开搜索入口，但高频请求容易触发风控验证页。",
+        "fallback": "优先公开搜索；遇到风控时切到 cookie、MCP 或用户直链。",
+    },
+    "taobao": {
+        "search_mode": "public_search",
+        "search_url": "https://s.taobao.com/search?q={query}",
+        "supports_direct_listing_fetch": True,
+        "reason": "淘宝有公开搜索入口，但页面结构偏前端化，稳定性依赖会话和页面变更。",
+        "fallback": "优先公开搜索；必要时结合 cookie 或用户提供链接。",
+    },
+    "pinduoduo": {
+        "search_mode": "js_shell",
+        "search_url": None,
+        "supports_direct_listing_fetch": True,
+        "reason": "拼多多网页搜索页主要返回前端壳，当前通用 HTML 抓取拿不到稳定商品卡片。",
+        "fallback": "优先走商品直链、cookie、MCP 或浏览器执行。",
+    },
+    "xianyu": {
+        "search_mode": "js_shell",
+        "search_url": None,
+        "supports_direct_listing_fetch": True,
+        "reason": "闲鱼有 PC 搜索地址，但结果页主要是 CSR 壳页，当前解析器提不出稳定商品列表。",
+        "fallback": "优先走商品直链、截图、cookie 或浏览器执行。",
+    },
+    "zhuanzhuan": {
+        "search_mode": "manual_link_only",
+        "search_url": None,
+        "supports_direct_listing_fetch": True,
+        "reason": "当前未发现稳定可用的公开网页版搜索结果地址，现有 /search 路径直接返回 404。",
+        "fallback": "优先让用户提供商品链接、截图，后续再接 MCP 或浏览器自动化。",
+    },
 }
 
 CONDITION_PATTERNS = [
@@ -51,6 +81,26 @@ PRICE_PATTERNS = [
     r"(?:¥|￥|RMB|rmb)\s*(?P<price>\d{2,7}(?:\.\d{1,2})?)",
     r"(?P<price>\d{2,7}(?:\.\d{1,2})?)\s*元",
 ]
+XIANYU_TITLE_PATTERNS = [
+    r'"title"\s*:\s*"([^"]{4,120})"',
+    r'"itemTitle"\s*:\s*"([^"]{4,120})"',
+]
+PINDUODUO_TITLE_PATTERNS = [
+    r'"goods_name"\s*:\s*"([^"]{4,160})"',
+    r'"goodsName"\s*:\s*"([^"]{4,160})"',
+    r'"title"\s*:\s*"([^"]{4,160})"',
+]
+PLATFORM_PRICE_PATTERNS = {
+    "xianyu": [
+        r'"price"\s*:\s*"?(?P<price>\d{2,7}(?:\.\d{1,2})?)',
+        r'"soldPrice"\s*:\s*"?(?P<price>\d{2,7}(?:\.\d{1,2})?)',
+    ],
+    "pinduoduo": [
+        r'"min_group_price"\s*:\s*(?P<price>\d{2,10})',
+        r'"group_price"\s*:\s*(?P<price>\d{2,10})',
+        r'"price"\s*:\s*"?(?P<price>\d{2,7}(?:\.\d{1,2})?)',
+    ],
+}
 
 
 def normalize_candidate(payload: dict[str, Any]) -> ProductCandidate:
@@ -157,6 +207,7 @@ def normalize_manual_candidate(payload: dict[str, Any]) -> ProductCandidate:
     )
     candidate.raw.setdefault("source_type", payload.get("source_type") or infer_source_type(payload))
     candidate.raw.setdefault("evidence_text", evidence_text)
+    _apply_platform_direct_link_hints(candidate)
     return candidate
 
 
@@ -164,6 +215,23 @@ def normalize_manual_candidates(payloads: list[dict[str, Any]]) -> list[ProductC
     """Normalize user-provided URLs, screenshots, and pasted notes."""
 
     return [normalize_manual_candidate(payload) for payload in payloads]
+
+
+def get_platform_discovery_capability(platform: str) -> dict[str, Any]:
+    """Return discovery capability metadata for a platform."""
+
+    default = {
+        "search_mode": "manual_link_only",
+        "search_url": None,
+        "supports_direct_listing_fetch": False,
+        "reason": "当前没有为该平台声明公开搜索能力。",
+        "fallback": "优先使用用户直链、截图或后续接入专用访问层。",
+    }
+    return {
+        "platform": platform,
+        **default,
+        **PLATFORM_DISCOVERY_CAPABILITIES.get(platform, {}),
+    }
 
 
 def candidate_summary(candidate: ProductCandidate) -> dict[str, Any]:
@@ -203,6 +271,21 @@ def infer_platform_from_url(url: str) -> str | None:
     for platform, domains in PLATFORM_URL_PATTERNS.items():
         if any(domain in host for domain in domains):
             return platform
+    return None
+
+
+def extract_listing_id(url: str, platform: str | None = None) -> str | None:
+    if not url:
+        return None
+    platform = platform or infer_platform_from_url(url)
+    if platform == "xianyu":
+        match = re.search(r"[?&](?:id|item_id)=([0-9A-Za-z_-]+)", url)
+        if match:
+            return match.group(1)
+    if platform == "pinduoduo":
+        match = re.search(r"[?&](?:goods_id|goodsId)=([0-9A-Za-z_-]+)", url)
+        if match:
+            return match.group(1)
     return None
 
 
@@ -272,16 +355,35 @@ def extract_published_at_from_text(text: str) -> str | None:
 
 
 def build_search_targets(query: str, platforms: list[str] | None = None) -> list[dict[str, str]]:
-    selected = platforms or list(PLATFORM_SEARCH_URLS)
+    selected = platforms or list(PLATFORM_DISCOVERY_CAPABILITIES)
     encoded = quote_plus(query.strip())
-    return [
-        {
+    targets: list[dict[str, str]] = []
+    for platform in selected:
+        capability = get_platform_discovery_capability(platform)
+        if capability["search_mode"] != "public_search" or not capability.get("search_url"):
+            continue
+        targets.append({
             "platform": platform,
-            "search_url": PLATFORM_SEARCH_URLS[platform].format(query=encoded),
-        }
-        for platform in selected
-        if platform in PLATFORM_SEARCH_URLS
-    ]
+            "search_url": str(capability["search_url"]).format(query=encoded),
+            "search_mode": capability["search_mode"],
+        })
+    return targets
+
+
+def _apply_platform_direct_link_hints(candidate: ProductCandidate) -> None:
+    platform = candidate.platform
+    if platform not in {"xianyu", "pinduoduo"}:
+        return
+    listing_id = extract_listing_id(candidate.url or "", platform)
+    if listing_id:
+        candidate.raw.setdefault("listing_id", listing_id)
+    if platform == "xianyu":
+        if not candidate.condition and "验货宝" in (candidate.raw.get("evidence_text") or ""):
+            candidate.notes.append("xianyu_inspection_hint")
+    if platform == "pinduoduo":
+        evidence = candidate.raw.get("evidence_text") or ""
+        if "百亿补贴" in evidence and "subsidy" not in candidate.risk_flags:
+            candidate.notes.append("pinduoduo_subsidy_hint")
 
 
 def discover_manual_candidates(
@@ -316,6 +418,8 @@ def discover_manual_candidates(
                 if not candidate.seller.seller_name:
                     candidate.seller.seller_name = snapshot.get("seller_name")
                 candidate.raw.setdefault("fetch_snapshot", snapshot)
+                if snapshot.get("listing_id"):
+                    candidate.raw.setdefault("listing_id", snapshot["listing_id"])
                 candidate.notes.append("fetched_listing_snapshot")
         logs.append(log)
     return candidates, logs
@@ -343,7 +447,7 @@ def fetch_listing_snapshot(
     try:
         with urlopen(request, timeout=timeout) as response:
             body = response.read(65536).decode("utf-8", errors="ignore")
-            extracted = extract_listing_fields(body)
+            extracted = extract_listing_fields(body, platform=platform, final_url=response.geturl())
             extracted.update({
                 "ok": True,
                 "fetched": True,
@@ -354,7 +458,7 @@ def fetch_listing_snapshot(
             return extracted
     except HTTPError as exc:
         body = exc.read(8192).decode("utf-8", errors="ignore")
-        extracted = extract_listing_fields(body)
+        extracted = extract_listing_fields(body, platform=platform, final_url=exc.geturl())
         extracted.update({
             "ok": False,
             "fetched": False,
@@ -373,18 +477,18 @@ def fetch_listing_snapshot(
         }
 
 
-def extract_listing_fields(body: str) -> dict[str, Any]:
+def extract_listing_fields(
+    body: str,
+    platform: str | None = None,
+    final_url: str | None = None,
+) -> dict[str, Any]:
     """Extract title/price/condition/region/published fields from HTML or text."""
 
     text = body or ""
-    title = None
-    for pattern in TITLE_META_PATTERNS:
-        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-        if match:
-            title = _clean_text(match.group(1))
-            break
-
-    price = extract_price_from_text(text)
+    normalized_platform = platform or infer_platform_from_url(final_url or "")
+    listing_id = extract_listing_id(final_url or "", normalized_platform)
+    title = extract_platform_title(text, normalized_platform) or extract_generic_title(text)
+    price = extract_platform_price(text, normalized_platform) or extract_price_from_text(text)
     condition = extract_condition_from_text(text)
     region = extract_region_from_text(text)
     published_at = extract_published_at_from_text(text)
@@ -400,7 +504,58 @@ def extract_listing_fields(body: str) -> dict[str, Any]:
         "region": region,
         "published_at": published_at,
         "seller_name": seller_name,
+        "listing_id": listing_id,
     }
+
+
+def extract_generic_title(text: str) -> str | None:
+    title = None
+    for pattern in TITLE_META_PATTERNS:
+        match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+        if match:
+            title = _clean_text(match.group(1))
+            break
+    return _sanitize_title(title)
+
+
+def extract_platform_title(text: str, platform: str | None) -> str | None:
+    if platform == "xianyu":
+        for pattern in XIANYU_TITLE_PATTERNS:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return _sanitize_title(match.group(1))
+    if platform == "pinduoduo":
+        for pattern in PINDUODUO_TITLE_PATTERNS:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return _sanitize_title(match.group(1))
+    return None
+
+
+def extract_platform_price(text: str, platform: str | None) -> float | None:
+    patterns = PLATFORM_PRICE_PATTERNS.get(platform or "", [])
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            price = _maybe_float(match.group("price"))
+            if platform == "pinduoduo" and price and price > 10000:
+                return round(price / 100, 2)
+            return price
+    return None
+
+
+def _sanitize_title(title: str | None) -> str | None:
+    if not title:
+        return None
+    cleaned = _clean_text(title)
+    bad_titles = {
+        "闲鱼 - 闲不住？上闲鱼！",
+        "拼多多商城",
+        "京东验证",
+    }
+    if cleaned in bad_titles:
+        return None
+    return cleaned
 
 
 def _clean_text(value: str) -> str:

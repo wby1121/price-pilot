@@ -18,6 +18,7 @@ def aggregate_decision(
     return DecisionReport(
         best_candidate=best_candidate,
         ranked_candidates=ranked_candidates,
+        top_recommendations=ranked_candidates[:3],
         quoted_replies=quoted_replies,
         decision_reason=reason,
     )
@@ -43,4 +44,3 @@ def build_decision_reason(best_candidate: CandidateScore | None, quoted_replies:
         f"综合候选评分后优先推荐 {best_candidate.platform} 的「{best_candidate.title}」，"
         f" 推荐理由：{best_candidate.recommendation_reason}。"
     )
-

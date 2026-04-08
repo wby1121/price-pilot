@@ -58,16 +58,19 @@ def test_workflow_command_runs_end_to_end(tmp_path: Path, capsys):
     output = json.loads(capsys.readouterr().out)
     assert len(output["discovered_candidates"]) == 2
     assert len(output["ranked_candidates"]) == 2
+    assert len(output["top_recommendations"]) == 2
+    assert output["top_recommendations"][0]["url"] == "https://example.com/xianyu-switch"
     assert len(output["inquiry_queue"]) == 1
     assert output["quoted_replies"][0]["quoted_price"] == 1680.0
     assert output["decision"]["best_candidate"] is not None
+    assert len(output["decision"]["top_recommendations"]) == 2
     assert "推荐" in output["decision"]["decision_reason"]
 
 
 def test_discover_command_normalizes_manual_inputs(tmp_path: Path, capsys):
     payload = {
         "query": "Switch OLED 二手",
-        "platforms": ["xianyu", "zhuanzhuan"],
+        "platforms": ["jd", "taobao", "xianyu", "zhuanzhuan"],
         "manual_inputs": [
             {
                 "url": "https://www.goofish.com/item?id=123",
@@ -93,7 +96,10 @@ def test_discover_command_normalizes_manual_inputs(tmp_path: Path, capsys):
     assert output["normalized_candidates"][0]["title"] == "闲鱼 Switch OLED 95新"
     assert output["normalized_candidates"][0]["price"] == 1688.0
     assert output["normalized_candidates"][0]["source_type"] == "screenshot"
-    assert output["search_targets"][0]["platform"] == "xianyu"
+    assert [item["platform"] for item in output["search_targets"]] == ["jd", "taobao"]
+    source_status = {item["platform"]: item for item in output["source_status"]}
+    assert source_status["xianyu"]["search_mode"] == "js_shell"
+    assert source_status["zhuanzhuan"]["search_mode"] == "manual_link_only"
 
 
 def test_inquiry_send_command_records_trace(tmp_path: Path, capsys):

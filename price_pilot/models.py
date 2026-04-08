@@ -85,6 +85,6 @@ class DecisionReport:
 
     best_candidate: CandidateScore | None
     ranked_candidates: list[CandidateScore]
+    top_recommendations: list[CandidateScore]
     quoted_replies: list[InquiryReply]
     decision_reason: str
-
