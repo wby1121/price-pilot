@@ -136,11 +136,25 @@ When the user wants true transaction-ready pricing instead of rough market compa
 Always answer in a way that helps the user buy or reject:
 
 - lead with the best overall option
+- return the top 2 to 3 candidates, not only one winner
 - call out the best budget option if it differs
 - call out the safest option if it differs
 - explain why lower-ranked options lost
 - mention the biggest risk to check before checkout
 - always include direct product links when available
+
+When a platform fails, explain the failure in plain language instead of saying only "failed" or "access denied":
+
+- say whether the platform has no stable public search page, a JS shell page, a login wall, or a verification page
+- say what fallback was used or should be used next
+- if the platform was skipped, say so explicitly
+
+Preferred answer structure:
+
+1. Best overall recommendation
+2. Top candidates with platform, price, score, and direct product link
+3. Platform coverage and why any platform was skipped or degraded
+4. Biggest risk checks before buying
 
 ## References
 

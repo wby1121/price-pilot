@@ -12,7 +12,12 @@ from .config import Config
 from .core import default_skills_dir, install_skill, skill_root, uninstall_skill
 from .cookies import cookie_status, import_cookie_file, probe_cookie_file, validate_cookie_file
 from .decision import aggregate_decision
-from .discovery import build_search_targets, candidate_summary, discover_manual_candidates
+from .discovery import (
+    build_search_targets,
+    candidate_summary,
+    discover_manual_candidates,
+    get_platform_discovery_capability,
+)
 from .doctor import format_doctor_report
 from .inquiry import build_inquiry_queue, parse_reply, send_inquiry_messages
 from .integrations.mcporter import locate_mcporter_config, resolve_platform_server
@@ -72,6 +77,7 @@ def _serialize_decision(report: DecisionReport) -> dict:
     return {
         "best_candidate": _serialize_candidate_score(report.best_candidate) if report.best_candidate else None,
         "ranked_candidates": [_serialize_candidate_score(item) for item in report.ranked_candidates],
+        "top_recommendations": [_serialize_candidate_score(item) for item in report.top_recommendations],
         "quoted_replies": [_serialize_reply(item) for item in report.quoted_replies],
         "decision_reason": report.decision_reason,
     }
@@ -138,8 +144,14 @@ def _build_source_status(platforms: list[str], config: Config) -> list[dict]:
     for platform in platforms:
         server = resolve_platform_server(platform, mcporter_path)
         cookie_file = config.get_cookie_file(platform)
+        capability = get_platform_discovery_capability(platform)
         statuses.append({
             "platform": platform,
+            "search_mode": capability["search_mode"],
+            "search_url": capability["search_url"],
+            "supports_direct_listing_fetch": capability["supports_direct_listing_fetch"],
+            "reason": capability["reason"],
+            "fallback": capability["fallback"],
             "mcporter_server": server,
             "mcporter_config": str(mcporter_path) if mcporter_path else None,
             "has_cookie": bool(cookie_file),
@@ -395,6 +407,7 @@ def main() -> None:
             "discovered_candidates": [candidate.raw for candidate in candidates],
             "discovery_logs": discovery_logs,
             "ranked_candidates": [_serialize_candidate_score(item) for item in scored],
+            "top_recommendations": [_serialize_candidate_score(item) for item in report.top_recommendations],
             "inquiry_queue": [_serialize_inquiry_message(item) for item in inquiry_queue],
             "quoted_replies": [_serialize_reply(item) for item in replies],
             "decision": _serialize_decision(report),

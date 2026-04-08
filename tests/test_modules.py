@@ -44,4 +44,5 @@ def test_module_pipeline_runs_without_inquiry_transport():
     assert len(queue) == 1
     assert reply.quoted_price == 1680.0
     assert report.best_candidate is not None
+    assert report.top_recommendations[0].url is not None
     assert "推荐" in report.decision_reason
