@@ -1,6 +1,6 @@
 [project]
 name = "price-pilot"
-version = "0.2.0"
+version = "0.3.0"
 description = "Give your AI Agent China shopping comparison across JD, Taobao, Pinduoduo, Xianyu, and Zhuanzhuan."
 readme = "README.md"
 license = {text = "MIT"}

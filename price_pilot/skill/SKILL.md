@@ -19,7 +19,7 @@ metadata:
 
 ## Overview
 
-Use this skill to turn a shopping request into a structured, cross-platform recommendation. Search live listings, normalize the evidence, score the options, and explain why the top choice wins.
+Use this skill to turn a shopping request into a structured, cross-platform recommendation. Integrate available listing evidence, normalize the data, score the options, and explain why the top choice wins.
 
 ## System Modules
 
@@ -64,15 +64,24 @@ Extract the decision constraints before searching:
 
 Ask a follow-up only when the missing detail would materially change the recommendation. Otherwise proceed with reasonable defaults and state them.
 
-### 2. Search each platform with live data
+### 2. Route each platform to the best data source
 
-Use current web data for all time-sensitive facts. Do not rely on stale memory for prices, ratings, or availability.
+Use current data for all time-sensitive facts. Do not rely on stale memory for prices, ratings, or availability.
+
+Prefer deterministic evidence over blind browsing:
+
+1. direct listing links or screenshots supplied by the user
+2. configured marketplace MCP servers
+3. configured local cookie exports
+4. public search pages
+5. only then, broad browsing as a weak fallback
 
 If direct browsing is blocked, prefer these escalation paths in order:
 
-1. Use a configured marketplace MCP server when available.
-2. Use a configured local cookie export for the platform.
-3. Ask the user for direct listing links or screenshots instead of stopping at "access denied".
+1. Ask the user for direct listing links or screenshots when they already have candidate products.
+2. Use a configured marketplace MCP server when available.
+3. Use a configured local cookie export for the platform.
+4. Explain the degradation instead of pretending the search was complete.
 
 Search these platforms unless the user narrows the scope:
 
@@ -102,6 +111,7 @@ Capture these fields whenever available:
 - advantages
 - red flags
 - listing URL
+- evidence source such as public search, direct link, screenshot, cookie session, or MCP
 
 ### 4. Evaluate evidence quality for 候选评分
 
@@ -142,6 +152,7 @@ Always answer in a way that helps the user buy or reject:
 - explain why lower-ranked options lost
 - mention the biggest risk to check before checkout
 - always include direct product links when available
+- make it explicit which platforms were covered by deterministic sources and which were only best-effort
 
 When a platform fails, explain the failure in plain language instead of saying only "failed" or "access denied":
 

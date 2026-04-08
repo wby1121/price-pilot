@@ -70,7 +70,7 @@ def test_workflow_command_runs_end_to_end(tmp_path: Path, capsys):
 def test_discover_command_normalizes_manual_inputs(tmp_path: Path, capsys):
     payload = {
         "query": "Switch OLED 二手",
-        "platforms": ["jd", "taobao", "xianyu", "zhuanzhuan"],
+        "platforms": ["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"],
         "manual_inputs": [
             {
                 "url": "https://www.goofish.com/item?id=123",
@@ -96,9 +96,12 @@ def test_discover_command_normalizes_manual_inputs(tmp_path: Path, capsys):
     assert output["normalized_candidates"][0]["title"] == "闲鱼 Switch OLED 95新"
     assert output["normalized_candidates"][0]["price"] == 1688.0
     assert output["normalized_candidates"][0]["source_type"] == "screenshot"
-    assert [item["platform"] for item in output["search_targets"]] == ["jd", "taobao"]
+    assert [item["platform"] for item in output["search_targets"]] == ["jd", "taobao", "pinduoduo", "xianyu"]
     source_status = {item["platform"]: item for item in output["source_status"]}
-    assert source_status["xianyu"]["search_mode"] == "js_shell"
+    assert source_status["jd"]["recommended_source"] == "public_search"
+    assert source_status["xianyu"]["recommended_source"] == "direct_link"
+    assert source_status["pinduoduo"]["search_mode"] == "best_effort_search"
+    assert source_status["xianyu"]["search_mode"] == "best_effort_search"
     assert source_status["zhuanzhuan"]["search_mode"] == "manual_link_only"
 
 
@@ -139,3 +142,18 @@ def test_inquiry_send_command_records_trace(tmp_path: Path, capsys):
     trace_files = list(log_dir.glob("*.jsonl"))
     assert trace_files
     assert "Inquiry recorded" in output["results"][0]["message"]
+
+
+def test_sources_command_reports_platform_routing(capsys):
+    old_argv = sys.argv
+    sys.argv = ["price-pilot", "sources", "--platforms", "jd", "xianyu", "zhuanzhuan"]
+    try:
+        main()
+    finally:
+        sys.argv = old_argv
+
+    output = json.loads(capsys.readouterr().out)
+    routing = {item["platform"]: item for item in output["sources"]}
+    assert routing["jd"]["recommended_source"] == "public_search"
+    assert routing["xianyu"]["recommended_source"] == "direct_link"
+    assert routing["zhuanzhuan"]["recommended_source"] == "direct_link"

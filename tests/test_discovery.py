@@ -11,6 +11,7 @@ def test_xianyu_direct_link_normalization_prefers_item_title():
     assert candidate.platform == "xianyu"
     assert candidate.raw["listing_id"] == "123456"
     assert candidate.title == "闲鱼 Switch OLED 95新"
+    assert candidate.region == "上海"
 
 
 def test_pinduoduo_extract_listing_fields_prefers_goods_name():

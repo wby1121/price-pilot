@@ -12,8 +12,9 @@ from .models import (
     SellerProfile,
 )
 from .scoring import score_candidate, score_candidates
+from .sources import build_source_plan, build_platform_source_plan
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "__version__",
@@ -31,4 +32,6 @@ __all__ = [
     "build_inquiry_queue",
     "parse_reply",
     "aggregate_decision",
+    "build_source_plan",
+    "build_platform_source_plan",
 ]

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- Added `price_pilot/sources.py` and a new `price-pilot sources` command to expose deterministic platform source routing.
+- Reframed the architecture around data ingestion, normalization, decision, and inquiry instead of treating the agent as the primary crawler.
+- Updated the skill and README so platform coverage, fallback order, and recommendation boundaries are explained more honestly.
+
 ## 0.2.0
 
 - Split discovery into platform capability routing instead of assuming every marketplace has a stable public search page.

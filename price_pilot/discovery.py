@@ -38,18 +38,18 @@ PLATFORM_DISCOVERY_CAPABILITIES = {
         "fallback": "优先公开搜索；必要时结合 cookie 或用户提供链接。",
     },
     "pinduoduo": {
-        "search_mode": "js_shell",
-        "search_url": None,
+        "search_mode": "best_effort_search",
+        "search_url": "https://mobile.yangkeduo.com/search_result.html?search_key={query}",
         "supports_direct_listing_fetch": True,
-        "reason": "拼多多网页搜索页主要返回前端壳，当前通用 HTML 抓取拿不到稳定商品卡片。",
-        "fallback": "优先走商品直链、cookie、MCP 或浏览器执行。",
+        "reason": "拼多多有 H5 搜索地址，但结果页偏前端壳，当前抓取稳定性较差。",
+        "fallback": "先尝试 H5 搜索；拿不到稳定结果时切到商品直链、cookie、MCP 或浏览器执行。",
     },
     "xianyu": {
-        "search_mode": "js_shell",
-        "search_url": None,
+        "search_mode": "best_effort_search",
+        "search_url": "https://www.goofish.com/search?q={query}",
         "supports_direct_listing_fetch": True,
-        "reason": "闲鱼有 PC 搜索地址，但结果页主要是 CSR 壳页，当前解析器提不出稳定商品列表。",
-        "fallback": "优先走商品直链、截图、cookie 或浏览器执行。",
+        "reason": "闲鱼有 PC 搜索地址，但结果页偏 CSR 壳页，搜索可尝试，解析稳定性一般。",
+        "fallback": "先尝试 PC 搜索；提取不稳定时切到商品直链、截图、cookie 或浏览器执行。",
     },
     "zhuanzhuan": {
         "search_mode": "manual_link_only",
@@ -65,7 +65,7 @@ CONDITION_PATTERNS = [
     r"(全新未拆封|全新|二手|99新|95新|9成新|8成新|used|new)",
 ]
 REGION_PATTERNS = [
-    r"(?:地区|所在地|发货地|位置|城市)[:：\s]*([A-Za-z\u4e00-\u9fff·\-\s]{2,20})",
+    r"(?:地区|所在地|发货地|位置|城市)[:： \t]*([A-Za-z\u4e00-\u9fff·\- ]{2,20})",
 ]
 PUBLISHED_PATTERNS = [
     r"(?:发布时间|发布于|上架时间|发布时间间)[:：\s]*([0-9]{4}[-/.][0-9]{1,2}[-/.][0-9]{1,2}(?:\s+[0-9]{1,2}:[0-9]{2})?)",
@@ -360,7 +360,7 @@ def build_search_targets(query: str, platforms: list[str] | None = None) -> list
     targets: list[dict[str, str]] = []
     for platform in selected:
         capability = get_platform_discovery_capability(platform)
-        if capability["search_mode"] != "public_search" or not capability.get("search_url"):
+        if capability["search_mode"] not in {"public_search", "best_effort_search"} or not capability.get("search_url"):
             continue
         targets.append({
             "platform": platform,

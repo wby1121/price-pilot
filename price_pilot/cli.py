@@ -16,14 +16,13 @@ from .discovery import (
     build_search_targets,
     candidate_summary,
     discover_manual_candidates,
-    get_platform_discovery_capability,
 )
 from .doctor import format_doctor_report
 from .inquiry import build_inquiry_queue, parse_reply, send_inquiry_messages
-from .integrations.mcporter import locate_mcporter_config, resolve_platform_server
 from .models import CandidateScore, DecisionReport, InquiryMessage, InquiryReply
 from .ranking import rank_items
 from .scoring import score_candidates
+from .sources import build_source_plan
 
 
 def _load_items(path: Path) -> list[dict]:
@@ -139,26 +138,7 @@ def _load_discovery_payload(path: Path) -> dict:
 
 
 def _build_source_status(platforms: list[str], config: Config) -> list[dict]:
-    mcporter_path = locate_mcporter_config()
-    statuses: list[dict] = []
-    for platform in platforms:
-        server = resolve_platform_server(platform, mcporter_path)
-        cookie_file = config.get_cookie_file(platform)
-        capability = get_platform_discovery_capability(platform)
-        statuses.append({
-            "platform": platform,
-            "search_mode": capability["search_mode"],
-            "search_url": capability["search_url"],
-            "supports_direct_listing_fetch": capability["supports_direct_listing_fetch"],
-            "reason": capability["reason"],
-            "fallback": capability["fallback"],
-            "mcporter_server": server,
-            "mcporter_config": str(mcporter_path) if mcporter_path else None,
-            "has_cookie": bool(cookie_file),
-            "cookie_file": cookie_file,
-            "mode": "mcp" if server else ("cookie" if cookie_file else "manual"),
-        })
-    return statuses
+    return build_source_plan(platforms, config)
 
 
 def main() -> None:
@@ -218,6 +198,17 @@ def main() -> None:
     discover_parser.add_argument("--input", required=True, help="JSON array or object with manual_inputs/query.")
     discover_parser.add_argument("--fetch", action="store_true", help="Attempt to fetch direct listing URLs for enrichment.")
     discover_parser.add_argument("--timeout", type=int, default=12, help="Fetch timeout in seconds.")
+
+    sources_parser = subparsers.add_parser(
+        "sources",
+        help="Show deterministic source routing for each marketplace.",
+    )
+    sources_parser.add_argument(
+        "--platforms",
+        nargs="+",
+        choices=["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"],
+        help="Subset of marketplaces to inspect.",
+    )
 
     workflow_parser = subparsers.add_parser(
         "workflow",
@@ -378,6 +369,12 @@ def main() -> None:
             "normalized_candidates": [candidate_summary(item) for item in candidates],
             "discovery_logs": logs,
         }, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "sources":
+        config = Config()
+        platforms = args.platforms or ["jd", "taobao", "pinduoduo", "xianyu", "zhuanzhuan"]
+        print(json.dumps({"sources": _build_source_status(platforms, config)}, ensure_ascii=False, indent=2))
         return
 
     if args.command == "workflow":
