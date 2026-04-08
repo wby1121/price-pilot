@@ -13,7 +13,7 @@ from .models import (
 )
 from .scoring import score_candidate, score_candidates
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "__version__",
