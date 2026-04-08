@@ -201,7 +201,7 @@ Price Pilot 当前不是自己维护一套爬虫平台，而是刻意采用更�
 
 ### Cookie / MCP 接入层
 
-Price Pilot 现在开始提供一层和 Agent Reach 类似的接入骨架：
+Price Pilot 现在提供一层面向真实访问场景的接入骨架：
 
 - 本地配置文件：`~/.price-pilot/config.yaml`
 - cookie 工作流：
@@ -298,7 +298,7 @@ python3 -m pip uninstall price-pilot
 4. 统一评分
 5. 输出购买建议
 
-仓库结构参考了 Agent Reach 的组织方式，核心目录如下：
+仓库围绕 skill、CLI 和运行时模块组织，核心目录如下：
 
 ```text
 .

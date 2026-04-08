@@ -3,8 +3,13 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
 from dataclasses import asdict
+from datetime import datetime, timezone
+from pathlib import Path
 
 from .models import InquiryMessage, InquiryReply, ProductCandidate
 
@@ -78,3 +83,109 @@ def extract_price(text: str) -> float | None:
     except ValueError:
         return None
 
+
+def inquiry_log_dir(base_dir: Path | None = None) -> Path:
+    root = base_dir or (Path.home() / ".price-pilot" / "inquiries")
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def send_inquiry_messages(
+    messages: list[InquiryMessage],
+    *,
+    require_confirmed: bool = True,
+    transport: str = "log",
+    command_template: str | None = None,
+    log_dir: Path | None = None,
+) -> list[dict]:
+    """Dispatch confirmed inquiry messages through a log or shell transport."""
+
+    results: list[dict] = []
+    target_dir = inquiry_log_dir(log_dir)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d")
+    log_path = target_dir / f"{timestamp}.jsonl"
+
+    for message in messages:
+        if require_confirmed and not message.confirmed:
+            results.append({
+                "platform": message.platform,
+                "candidate_url": message.candidate_url,
+                "seller_name": message.seller_name,
+                "ok": False,
+                "transport": transport,
+                "message": "Inquiry message must be confirmed before sending",
+            })
+            continue
+
+        payload = asdict(message)
+        payload["sent_at"] = datetime.now(timezone.utc).isoformat()
+        payload["transport"] = transport
+
+        if transport == "log":
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            results.append({
+                "platform": message.platform,
+                "candidate_url": message.candidate_url,
+                "seller_name": message.seller_name,
+                "ok": True,
+                "transport": transport,
+                "log_path": str(log_path),
+                "message": "Inquiry recorded to log transport",
+            })
+            continue
+
+        if transport == "shell":
+            if not command_template:
+                results.append({
+                    "platform": message.platform,
+                    "candidate_url": message.candidate_url,
+                    "seller_name": message.seller_name,
+                    "ok": False,
+                    "transport": transport,
+                    "message": "Shell transport requires a command template",
+                })
+                continue
+            env = {
+                "PRICE_PILOT_PLATFORM": message.platform,
+                "PRICE_PILOT_CANDIDATE_URL": message.candidate_url or "",
+                "PRICE_PILOT_SELLER_NAME": message.seller_name or "",
+                "PRICE_PILOT_MESSAGE": message.text,
+                "PRICE_PILOT_LOG_PATH": str(log_path),
+            }
+            completed = subprocess.run(
+                command_template,
+                shell=True,
+                text=True,
+                capture_output=True,
+                env={**os.environ, **env},
+            )
+            payload["shell_returncode"] = completed.returncode
+            payload["shell_stdout"] = completed.stdout
+            payload["shell_stderr"] = completed.stderr
+            with log_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            results.append({
+                "platform": message.platform,
+                "candidate_url": message.candidate_url,
+                "seller_name": message.seller_name,
+                "ok": completed.returncode == 0,
+                "transport": transport,
+                "log_path": str(log_path),
+                "returncode": completed.returncode,
+                "stdout": completed.stdout.strip(),
+                "stderr": completed.stderr.strip(),
+                "message": "Shell transport executed",
+            })
+            continue
+
+        results.append({
+            "platform": message.platform,
+            "candidate_url": message.candidate_url,
+            "seller_name": message.seller_name,
+            "ok": False,
+            "transport": transport,
+            "message": f"Unsupported transport: {transport}",
+        })
+
+    return results
